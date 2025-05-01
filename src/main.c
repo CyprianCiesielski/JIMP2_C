@@ -4,7 +4,6 @@
 #include "graph.h"
 #include "file_reader.h"
 #include "file_writer.h"
-#warning "file_writer.h included successfully"
 
 // Funkcja do wyświetlania grafu
 void print_graph(const Graph *graph) {
@@ -17,25 +16,19 @@ void print_graph(const Graph *graph) {
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    char path[256];
+    int parts = argc > 1 ? atoi(argv[1]) : 2;
+    double accuracy = argc > 2 ? atof(argv[2]) / 100.0 : 0.1;
+    char *file = argc > 3 ? argv[3] : "graf.cssrg";
+    snprintf(path, sizeof(path), "data/%s", file);
+
     Graph graph;
     ParsedData data = {0}; // Inicjalizacja struktury ParsedData
 
     // Wczytaj graf z pliku i sparsuj dane
-    load_graph("data/graf.csrrg", &graph, &data);
-
-    // Zapisz dane do plików
-    write_text("data/answer.csrrg", &data);
-    write_binary("data/answer.bin", &data);
-
-    // Odczytaj i wyświetl dane z pliku binarnego
-    printf("\nOdczyt danych z pliku binarnego:\n");
-    read_binary("data/answer.bin");
-
-    // Zwolnij pamięć
-    for (int i = 0; i < graph.vertices; i++) {
-        free(graph.nodes[i].neighbors);
-    }
+    load_graph(path, &graph, &data);
+    
     free(graph.nodes);
     free(data.line1);
     free(data.line2);
