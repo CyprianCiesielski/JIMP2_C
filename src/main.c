@@ -3,6 +3,8 @@
 #include <string.h>
 #include "graph.h"
 #include "file_reader.h"
+#include "file_writer.h"
+#warning "file_writer.h included successfully"
 
 // Funkcja do wyświetlania grafu
 void print_graph(const Graph *graph) {
@@ -17,19 +19,29 @@ void print_graph(const Graph *graph) {
 
 int main() {
     Graph graph;
+    ParsedData data = {0}; // Inicjalizacja struktury ParsedData
 
-    // Wczytaj graf z pliku
-    load_graph("data/graf.csrrg", &graph);
+    // Wczytaj graf z pliku i sparsuj dane
+    load_graph("data/graf.csrrg", &graph, &data);
 
-    // Wyświetl graf
-    printf("Graf w formie list sąsiedztwa:\n");
-    print_graph(&graph);
+    // Zapisz dane do plików
+    write_text("data/answer.csrrg", &data);
+    write_binary("data/answer.bin", &data);
 
-    // Zwolnij pamięć grafu
+    // Odczytaj i wyświetl dane z pliku binarnego
+    printf("\nOdczyt danych z pliku binarnego:\n");
+    read_binary("data/answer.bin");
+
+    // Zwolnij pamięć
     for (int i = 0; i < graph.vertices; i++) {
         free(graph.nodes[i].neighbors);
     }
     free(graph.nodes);
+    free(data.line1);
+    free(data.line2);
+    free(data.line3);
+    free(data.edges);
+    free(data.row_pointers);
 
     return 0;
 }
