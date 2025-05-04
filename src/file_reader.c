@@ -24,72 +24,113 @@ int decode_vbyte(FILE *file)
 }
 
 // Funkcja do odczytu pliku binarnego wiersz po wierszu
-void read_binary(const char *filename)
-{
+void read_binary(const char *filename) {
     FILE *file = fopen(filename, "rb");
-    if (file == NULL)
-    {
+    if (file == NULL) {
         perror("Nie można otworzyć pliku binarnego do odczytu");
         exit(EXIT_FAILURE);
     }
 
-    // Separator w formacie little-endian
     const uint64_t separator = 0xDEADBEEFCAFEBABE;
     uint64_t read_separator;
 
     // Odczyt pierwszej linii (liczba wierzchołków)
     int num_vertices = decode_vbyte(file);
-    printf("%d\n", num_vertices);
+    printf("%d\n\n", num_vertices);  // Added extra \n
 
-    // Odczyt separatora między pierwszym a drugim wierszem
+    // Sprawdź separator po pierwszej linii
     fread(&read_separator, sizeof(uint64_t), 1, file);
-    if (read_separator != separator)
-    {
-        fprintf(stderr, "Błąd: brak separatora po pierwszym wierszu\n");
+    if (read_separator != separator) {
+        fprintf(stderr, "Błąd: brak separatora po pierwszej linii\n");
         fclose(file);
         return;
     }
 
-    // Odczyt drugiej linii (lista sąsiadów)
-    printf("Lista sąsiadów:\n");
-    while (1)
-    {
-        if (fread(&read_separator, sizeof(uint64_t), 1, file) == 1 && read_separator == separator)
-        {
-            break; // Separator oznacza koniec sekcji lista sąsiadów
+    // Odczyt drugiej linii
+    int val;
+    while (1) {
+        val = decode_vbyte(file);
+        printf("%d", val);
+        
+        // Sprawdź czy następny bajt to początek separatora
+        uint64_t peek;
+        if (fread(&peek, sizeof(uint64_t), 1, file) == 1) {
+            if (peek == separator) {
+                break;
+            }
+            fseek(file, -sizeof(uint64_t), SEEK_CUR);
         }
-
-        fseek(file, -sizeof(uint64_t), SEEK_CUR); // Cofnij wskaźnik pliku
-        int value = decode_vbyte(file);
-        printf("%d;", value);
+        printf(";");
     }
-    printf("\n");
+    printf("\n\n");  // Added extra \n
 
-    // Odczyt trzeciej linii (row_pointers)
-    printf("Row pointers:\n");
-    while (1)
-    {
-        if (fread(&read_separator, sizeof(uint64_t), 1, file) == 1 && read_separator == separator)
-        {
-            break; // Separator oznacza koniec sekcji row_pointers
+    // Odczyt trzeciej linii
+    while (1) {
+        val = decode_vbyte(file);
+        printf("%d", val);
+        
+        // Sprawdź czy następny bajt to początek separatora
+        uint64_t peek;
+        if (fread(&peek, sizeof(uint64_t), 1, file) == 1) {
+            if (peek == separator) {
+                break;
+            }
+            fseek(file, -sizeof(uint64_t), SEEK_CUR);
         }
-
-        fseek(file, -sizeof(uint64_t), SEEK_CUR); // Cofnij wskaźnik pliku
-        int value = decode_vbyte(file);
-        printf("%d;", value);
+        printf(";");
     }
-    printf("\n");
+    printf("\n\n");  // Added extra \n
 
-    // Odczyt czwartej linii (krawędzie)
-    printf("Krawędzie:\n");
-    while (!feof(file))
-    {
-        int value = decode_vbyte(file);
-        if (feof(file))
-        {
+    // Odczyt czwartej linii (wierzchołki i ich sąsiedzi)
+    while (1) {
+        val = decode_vbyte(file);
+        printf("%d", val);
+        
+        // Sprawdź czy następny bajt to początek separatora
+        uint64_t peek;
+        if (fread(&peek, sizeof(uint64_t), 1, file) == 1) {
+            if (peek == separator) {
+                break;
+            }
+            fseek(file, -sizeof(uint64_t), SEEK_CUR);
+            printf(";");
+        }
+    }
+    printf("\n\n");  // Added extra \n
+
+    // Odczyt piątej linii i kolejnych (indeksy dla każdej części)
+    while (!feof(file)) {
+        val = decode_vbyte(file);
+        if (feof(file)) break;
+        printf("%d", val);
+
+        // Try to read separator or next byte
+        uint64_t peek;
+        size_t read_bytes = fread(&peek, sizeof(uint64_t), 1, file);
+        
+        // If we read separator
+        if (read_bytes == 1 && peek == separator) {
+            printf("\n\n");
+            continue;
+        }
+        
+        // If we read something but it's not a separator
+        if (read_bytes == 1) {
+            fseek(file, -sizeof(uint64_t), SEEK_CUR);
+            printf(";");
+            continue;
+        }
+        
+        // If we couldn't read full 8 bytes but not at EOF
+        if (read_bytes == 0 && !feof(file)) {
+            printf(";");
+            continue;
+        }
+        
+        // If we're at EOF but still had a valid number
+        if (read_bytes == 0 && feof(file)) {
             break;
         }
-        printf("%d;", value);
     }
     printf("\n");
 
