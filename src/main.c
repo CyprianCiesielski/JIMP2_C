@@ -47,6 +47,11 @@ int main(int argc, char *argv[])
     check_partition_connectivity(&graph, parts); // Sprawdzenie spójności partycji
     // print_partition_data(&partition_data, parts); // Wypisz dane o częściach
 
+    // 2. optymalizacja krawędzi cięcia
+    optimize_cut_edges_FM(&graph, &partition_data, parts, 0.1);
+    count_cut_edges(&graph, &partition_data, parts); // Zliczanie krawędzi cięcia
+
+    
     printf("ilość wierzchołkow: %d", graph.vertices);
     free(graph.nodes);
     free(data.line1);
