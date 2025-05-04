@@ -1,27 +1,31 @@
-#ifndef PARTITON_H
-#define PARTITON_H
-#include "graph.h"
+#ifndef PARTITION_H
+#define PARTITION_H
+
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct Part_data
+// Forward declarations - zastępują #include "graph.h"
+struct Graph;
+typedef struct Graph Graph;
+
+// Definicje struktur dla partycji
+typedef struct Part
 {
-    int capacity;          // pojemność tablicy
-    int *part_vertexes;    // wierzchołki w każdej części
-    int part_vertex_count; // liczba wierzchołków w każdej części
-} Part_data;
+    int part_id;
+    int part_vertex_count;
+    int *part_vertexes; // Tablica wierzchołków w tej części
+    int capacity;       // Pojemność tablicy wierzchołków
+    // inne pola...
+} Part;
 
 typedef struct Partition_data
 {
-    Part_data *parts; // dane o częściach
+    int parts_count;
+    Part *parts;
+    
 } Partition_data;
 
-void initialize_partition_data(Partition_data *partition_data, int parts);
-
-void add_partition_data(Partition_data *partition_data, int part_id, int vertex);
-
-void free_partition_data(Partition_data *partition_data, int parts);
-
-void print_partition_data(const Partition_data *partition_data, int parts);
+int **get_part_neighbors(const Graph *graph, const Partition_data *partition_data, int part_id, int *size);
+// Pozostałe prototypy funkcji...
 
 #endif

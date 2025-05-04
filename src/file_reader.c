@@ -310,24 +310,25 @@ void load_graph(const char *filename, Graph *graph, ParsedData *data)
     fclose(file);
 
     // Tworzenie grafu
-    graph->vertices = data->line2_count;
-    graph->nodes = malloc(graph->vertices * sizeof(Node));
-    if (graph->nodes == NULL)
-    {
-        perror("Błąd alokacji pamięci dla węzłów grafu");
-        exit(EXIT_FAILURE);
-    }
+    // graph->vertices = data->line2_count;
+    // graph->nodes = malloc(graph->vertices * sizeof(Node));
+    // if (graph->nodes == NULL)
+    // {
+    //     perror("Błąd alokacji pamięci dla węzłów grafu");
+    //     exit(EXIT_FAILURE);
+    // }
 
-    // Inicjalizacja węzłów
-    for (int i = 0; i < graph->vertices; i++)
-    {
-        graph->nodes[i].vertex = i;
-        graph->nodes[i].neighbors = NULL;
-        graph->nodes[i].neighbor_count = 0;
-        graph->nodes[i].neighbor_capacity = 0;
-        graph->nodes[i].part_id = -1; // Ustawienie domyślnej wartości part_id
-    }
+    // // Inicjalizacja węzłów
+    // for (int i = 0; i < graph->vertices; i++)
+    // {
+    //     graph->nodes[i].vertex = i;
+    //     graph->nodes[i].neighbors = NULL;
+    //     graph->nodes[i].neighbor_count = 0;
+    //     graph->nodes[i].neighbor_capacity = 0;
+    //     graph->nodes[i].part_id = -1; // Ustawienie domyślnej wartości part_id
+    // }
 
+    inicialize_graph(graph, data->line2_count);
     // Dodawanie sąsiadów
     for (int i = 0; i < data->row_count; i++)
     {
