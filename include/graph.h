@@ -3,9 +3,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "partition.h"
 #include <stdint.h>
-#include "fm_optimization.h"
+
+// Forward declaration - zastępuje #include "fm_optimization.h"
+struct Partition_data;
+typedef struct Partition_data Partition_data;
 
 typedef struct Node
 {
@@ -13,10 +15,7 @@ typedef struct Node
     int *neighbors;
     int neighbor_count;
     int part_id;
-    int neighbor_capacity;   // pojemność tablicy sąsiadów
-    int *gain;               // zyski dla węzła
-    BucketNode *bucket_node; // wskaźnik do węzła kubełka
-    int bucket_index;        // indeks kubełka
+    int neighbor_capacity; // pojemność tablicy sąsiadów
 } Node;
 
 typedef struct Graph
@@ -24,14 +23,16 @@ typedef struct Graph
     int vertices;
     int edges;
     int parts;
+    int min_count;
+    int max_count;
     Node *nodes;
 } Graph;
 
-int **get_part_neighbors(const Graph *graph, const Partition_data *partition_data, int part_id, int *size);
+// Prototypy funkcji
 void print_part_neighbors(int **neighbors, int size);
-
 void inicialize_graph(Graph *graph, int vertices);
 void count_edges(Graph *graph);
+void assign_min_max_count(Graph *graph, int parts, float accuracy);
 void assing_parts(Graph *graph, int parts);
 void free_graph(Graph *graph);
 
