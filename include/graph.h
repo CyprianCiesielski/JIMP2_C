@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "partition.h"
 #include <stdint.h>
 #include "fm_optimization.h"
 
@@ -25,6 +26,9 @@ typedef struct Graph
     int parts;
     Node *nodes;
 } Graph;
+
+int **get_part_neighbors(const Graph *graph, const Partition_data *partition_data, int part_id, int *size);
+void print_part_neighbors(int **neighbors, int size);
 
 void inicialize_graph(Graph *graph, int vertices);
 void count_edges(Graph *graph);
