@@ -52,7 +52,7 @@ int *generate_seed_points(Graph *graph, int parts)
     return seed_points;
 }
 
-void region_growing(Graph *graph, int parts, Partition_data *partition_data, float accuracy)
+int region_growing(Graph *graph, int parts, Partition_data *partition_data, float accuracy)
 {
     // Sprawdzenie, czy liczba części jest większa od liczby wierzchołków
     if (parts > graph->vertices)
@@ -319,7 +319,7 @@ void region_growing(Graph *graph, int parts, Partition_data *partition_data, flo
 
     if (unassigned_count > 0)
     {
-        printf("WARNING: %d vertices remain unassigned\n", unassigned_count);
+       // printf("WARNING: %d vertices remain unassigned\n", unassigned_count);
 
         // Przypisz pozostałe wierzchołki do najmniejszych partycji
         for (int i = 0; i < graph->vertices; i++)
@@ -358,7 +358,7 @@ void region_growing(Graph *graph, int parts, Partition_data *partition_data, flo
                     graph->nodes[i].part_id = smallest_neighbor_part;
                     add_partition_data(partition_data, smallest_neighbor_part, i);
                     part_counts[smallest_neighbor_part]++;
-                    printf("Vertex %d assigned to part %d (has neighbor)\n", i, smallest_neighbor_part);
+                    //printf("Vertex %d assigned to part %d (has neighbor)\n", i, smallest_neighbor_part);
                 }
                 else
                 {
@@ -375,13 +375,13 @@ void region_growing(Graph *graph, int parts, Partition_data *partition_data, flo
                     graph->nodes[i].part_id = min_part;
                     add_partition_data(partition_data, min_part, i);
                     part_counts[min_part]++;
-                    printf("Vertex %d assigned to part %d (smallest part)\n", i, min_part);
+                    //printf("Vertex %d assigned to part %d (smallest part)\n", i, min_part);
                 }
             }
         }
     }
 
-    if (iterations >= graph->vertices * 2)
+    if (iterations >= graph->vertices * 3)
     {
         printf("WARNING: Loop terminated due to iteration limit\n");
     }
@@ -395,18 +395,38 @@ void region_growing(Graph *graph, int parts, Partition_data *partition_data, flo
     }
     printf("\n");
 
+    // At the end, before cleanup, add accuracy check
+    int success = 1;
+    float min_ratio = graph->vertices;
+    float max_ratio = 0;
+
+    for (int i = 0; i < parts; i++) {
+        float ratio = (float)part_counts[i] / avg_vertices_per_part;
+        if (ratio < min_ratio) min_ratio = ratio;
+        if (ratio > max_ratio) max_ratio = ratio;
+    }
+
+    // Check if accuracy requirements are met
+    if (min_ratio < (1.0 - accuracy) || max_ratio > (1.0 + accuracy)) {
+        success = 0;
+        printf("Warning: Final partition ratios (min: %.2f, max: %.2f) outside accuracy range (%.2f - %.2f)\n",
+               min_ratio, max_ratio, 1.0 - accuracy, 1.0 + accuracy);
+    }
+
     // Cleanup
     free(visited);
     free(seed_points);
     free(part_counts);
-    for (int i = 0; i < parts; i++)
-    {
+    for (int i = 0; i < parts; i++) {
         free(frontier[i]);
     }
     free(frontier);
     free(frontier_size);
     free(frontier_capacity);
+
+    return success; // Return whether accuracy requirements were met
 }
+
 // Function to check if a partition is connected and if there are any isolated vertices
 void check_partition_connectivity(Graph *graph, int parts)
 {

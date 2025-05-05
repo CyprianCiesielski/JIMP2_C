@@ -37,8 +37,7 @@ void inicialize_graph(Graph *graph, int vertices)
     graph->parts = 0;
     graph->min_count = 0;
     graph->max_count = 0;
-    count_edges(graph);
-
+    
     graph->nodes = malloc(vertices * sizeof(Node));
     if (graph->nodes == NULL)
     {

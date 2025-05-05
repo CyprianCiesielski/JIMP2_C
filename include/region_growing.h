@@ -24,7 +24,7 @@ void add_to_queue(struct Queue *queue, int item);
 void remove_from_queue(struct Queue *queue);
 
 // funckja do podzialu grafu na czesci
-void region_growing(Graph *graph, int parts, Partition_data *partition_data, float accuracy);
+int region_growing(Graph *graph, int parts, Partition_data *partition_data, float accuracy);
 
 // funkcja do generowania punktow startowych
 int *generate_seed_points(Graph *graph, int parts);

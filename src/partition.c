@@ -1,8 +1,23 @@
 #include "partition.h"
 #include "graph.h"
+#include <string.h>  // Add this for memcpy
 
 static int compare_ints(const void *a, const void *b) {
     return (*(int*)a - *(int*)b);
+}
+
+// Helper function - move from file_writer.c
+static int is_in_partition(const Partition_data *partition_data, int part_id, int vertex) {
+    if (!partition_data || part_id < 0 || part_id >= partition_data->parts_count) {
+        return 0;
+    }
+    
+    for (int i = 0; i < partition_data->parts[part_id].part_vertex_count; i++) {
+        if (partition_data->parts[part_id].part_vertexes[i] == vertex) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 int **get_part_neighbors(const Graph *graph, const Partition_data *partition_data, int part_id, int *size) {
@@ -121,16 +136,18 @@ void initialize_partition_data(Partition_data *partition_data, int parts)
     }
 }
 
-void free_partition_data(Partition_data *partition_data)
-{
-    if (!partition_data)
+// Fix the function signature to match the header
+void free_partition_data(Partition_data *partition_data, int parts) {
+    if (!partition_data) {
         return;
-
-    for (int i = 0; i < partition_data->parts_count; i++)
-    {
-        free(partition_data->parts[i].part_vertexes);
     }
-    free(partition_data->parts);
+
+    if (partition_data->parts) {
+        for (int i = 0; i < parts; i++) {
+            free(partition_data->parts[i].part_vertexes);
+        }
+        free(partition_data->parts);
+    }
 }
 
 void print_partition_data(const Partition_data *partition_data)
