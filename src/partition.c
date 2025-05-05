@@ -1,97 +1,98 @@
 #include "partition.h"
 #include "graph.h"
 
-int **get_part_neighbors(const Graph *graph, const Partition_data *partition_data, int part_id, int *size)
-{
-    if (!graph || !partition_data || !size)
-    {
+static int compare_ints(const void *a, const void *b) {
+    return (*(int*)a - *(int*)b);
+}
+
+int **get_part_neighbors(const Graph *graph, const Partition_data *partition_data, int part_id, int *size) {
+    if (!graph || !partition_data || !size || part_id < 0) {
         return NULL;
     }
 
-    // Get size of this partition
+    // Get number of vertices in this partition
     *size = partition_data->parts[part_id].part_vertex_count;
-    if (*size <= 0)
-    {
+    if (*size <= 0) {
         return NULL;
     }
 
-    // Allocate memory for array of neighbor arrays
-    int **neighbors = malloc(*size * sizeof(int *));
-    if (!neighbors)
-    {
+    // Create array for sorted vertices
+    int *vertices = malloc(*size * sizeof(int));
+    if (!vertices) {
         return NULL;
     }
 
-    // For each vertex in partition
-    for (int i = 0; i < *size; i++)
-    {
-        int vertex = partition_data->parts[part_id].part_vertexes[i];
+    // Copy and sort vertices
+    memcpy(vertices, partition_data->parts[part_id].part_vertexes, *size * sizeof(int));
+    qsort(vertices, *size, sizeof(int), compare_ints);
 
-        // Validate vertex index
-        if (vertex < 0 || vertex >= graph->vertices)
-        {
-            fprintf(stderr, "Invalid vertex index: %d\n", vertex);
-            // Clean up previously allocated memory
-            for (int j = 0; j < i; j++)
-            {
+    // Allocate array of neighbor arrays
+    int **neighbors = malloc(*size * sizeof(int*));
+    if (!neighbors) {
+        free(vertices);
+        return NULL;
+    }
+
+    // For each vertex in sorted order
+    for (int i = 0; i < *size; i++) {
+        int vertex = vertices[i];
+        int max_neighbors = graph->nodes[vertex].neighbor_count;
+        
+        // Allocate temporary array for neighbors
+        int *temp_neighbors = malloc(max_neighbors * sizeof(int));
+        int neighbor_count = 0;
+
+        if (!temp_neighbors) {
+            // Cleanup on failure
+            for (int j = 0; j < i; j++) {
                 free(neighbors[j]);
             }
             free(neighbors);
+            free(vertices);
             return NULL;
         }
 
-        // Count neighbors in same partition
-        int neighbor_count = 0;
-        for (int j = 0; j < graph->nodes[vertex].neighbor_count; j++)
-        {
+        // Find actual neighbors in same partition
+        for (int j = 0; j < max_neighbors; j++) {
             int neighbor = graph->nodes[vertex].neighbors[j];
-            // Check if neighbor is in same partition
-            for (int k = 0; k < partition_data->parts[part_id].part_vertex_count; k++)
-            {
-                if (partition_data->parts[part_id].part_vertexes[k] == neighbor)
-                {
-                    neighbor_count++;
-                    break;
-                }
+            if (is_in_partition(partition_data, part_id, neighbor)) {
+                temp_neighbors[neighbor_count++] = neighbor;
             }
         }
 
-        // Allocate array for vertex and its neighbors (+2 for vertex itself and terminator)
+        // Sort neighbors if we found any
+        if (neighbor_count > 0) {
+            qsort(temp_neighbors, neighbor_count, sizeof(int), compare_ints);
+        }
+
+        // Allocate final array for vertex and its neighbors (+2 for vertex and terminator)
         neighbors[i] = malloc((neighbor_count + 2) * sizeof(int));
-        if (!neighbors[i])
-        {
-            // Clean up
-            for (int j = 0; j < i; j++)
-            {
+        if (!neighbors[i]) {
+            // Cleanup on failure
+            for (int j = 0; j < i; j++) {
                 free(neighbors[j]);
             }
             free(neighbors);
+            free(vertices);
+            free(temp_neighbors);
             return NULL;
         }
 
         // Store vertex as first element
         neighbors[i][0] = vertex;
-
-        // Store neighbors
-        int pos = 1;
-        for (int j = 0; j < graph->nodes[vertex].neighbor_count; j++)
-        {
-            int neighbor = graph->nodes[vertex].neighbors[j];
-            // Check if neighbor is in same partition
-            for (int k = 0; k < partition_data->parts[part_id].part_vertex_count; k++)
-            {
-                if (partition_data->parts[part_id].part_vertexes[k] == neighbor)
-                {
-                    neighbors[i][pos++] = neighbor;
-                    break;
-                }
-            }
+        
+        // Copy sorted neighbors
+        for (int j = 0; j < neighbor_count; j++) {
+            neighbors[i][j + 1] = temp_neighbors[j];
         }
-
+        
         // Add terminator
-        neighbors[i][pos] = -1;
+        neighbors[i][neighbor_count + 1] = -1;
+
+        free(temp_neighbors);
     }
 
+    free(vertices);
     return neighbors;
 }
 

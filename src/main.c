@@ -187,6 +187,25 @@ int main(int argc, char *argv[])
     write_text(output_path, &data, &partition_data, &graph, parts);
     write_binary(binary_path, &data, &partition_data, &graph, parts);
 
+    // read_binary(binary_path);
+
+    // print_data(&graph, &partition_data, parts);
+
+    // int size;
+    // int **part0_neighbors = get_part_neighbors(&graph, &partition_data, 0, &size);
+    // if (part0_neighbors) {
+    //     printf("\nSąsiedzi dla części 0:\n");
+    //     print_part_neighbors(part0_neighbors, size);
+        
+    //     // Free the memory
+    //     for (int i = 0; i < size; i++) {
+    //         free(part0_neighbors[i]);
+    //     }
+    //     free(part0_neighbors);
+    // } else {
+    //     fprintf(stderr, "Failed to get neighbors for part 0\n");
+    // }
+
     // Use max_edges_cut and precompute to avoid unused warnings
     if (max_edges_cut >= 0)
     {
