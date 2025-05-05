@@ -5,7 +5,7 @@
 #include "partition.h"
 #include "graph.h"
 
-#define MAX_NEIGHBORS 100000
+#define MAX_NEIGHBORS 10000000
 
 void write_text(const char *filename, const ParsedData *data, const Partition_data *partition_data, const Graph *graph, int parts);
 void write_binary(const char *filename, const ParsedData *data, const Partition_data *partition_data, const Graph *graph, int parts);

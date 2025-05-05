@@ -1,8 +1,10 @@
 #include "file_reader.h"
 #include <sys/types.h>
 #include <unistd.h>
+#include <limits.h>
+#include <stdio.h>
 
-int MAX_BUFFOR = 40000;
+int MAX_BUFFOR = INT_MAX;
 // Funkcja pomocnicza do dekodowania liczby w formacie vByte
 int decode_vbyte(FILE *file)
 {
@@ -181,171 +183,166 @@ void load_graph(const char *filename, Graph *graph, ParsedData *data)
         exit(EXIT_FAILURE);
     }
     *(data->line1) = max_nodes;
+    printf("Wczytano pierwszą linię:\n");
 
     // Dynamiczna alokacja bufora dla linii
-    size_t bufsize = 128; // Początkowy rozmiar bufora
-    char *buffer = malloc(bufsize * sizeof(char));
-    if (buffer == NULL)
-    {
-        perror("Błąd alokacji pamięci dla bufora");
+    char *buffer = malloc(MAX_BUFFOR * sizeof(char));
+    if (!buffer) {
+        perror("Failed to allocate buffer");
         fclose(file);
         exit(EXIT_FAILURE);
     }
 
     // Wczytujemy drugą linię
-    ssize_t line_length;
-    size_t n = bufsize;
-    line_length = getline(&buffer, &n, file);
-    if (line_length == -1)
-    {
-        perror("Błąd odczytu drugiej linii");
+    if (!fgets(buffer, MAX_BUFFOR, file)) {
+        perror("Failed to read second line");
         free(buffer);
         fclose(file);
         exit(EXIT_FAILURE);
+    }
+
+    // Usuwamy znak nowej linii, jeśli jest obecny
+    size_t len = strlen(buffer);
+    if (len > 0 && buffer[len-1] == '\n') {
+        buffer[len-1] = '\0';
     }
 
     // Parsowanie drugiej linii
     data->line2 = NULL;
     data->line2_count = 0;
-    char *token = strtok(buffer, ";\n");
-    while (token != NULL)
-    {
-        data->line2 = realloc(data->line2, (data->line2_count + 1) * sizeof(int));
-        if (data->line2 == NULL)
-        {
-            perror("Błąd alokacji pamięci dla line2");
+    char *token = strtok(buffer, ";");
+    while (token) {
+        int *new_line2 = realloc(data->line2, (data->line2_count + 1) * sizeof(int));
+        if (!new_line2) {
+            perror("Failed to reallocate line2");
             free(buffer);
+            free(data->line2);
             fclose(file);
             exit(EXIT_FAILURE);
         }
+        data->line2 = new_line2;
         data->line2[data->line2_count++] = atoi(token);
-        token = strtok(NULL, ";\n");
+        token = strtok(NULL, ";");
     }
-
+    
     // Wczytujemy trzecią linię
-    line_length = getline(&buffer, &n, file);
-    if (line_length == -1)
-    {
-        perror("Błąd odczytu trzeciej linii");
+    if (!fgets(buffer, MAX_BUFFOR, file)) {
+        perror("Failed to read third line");
         free(buffer);
         fclose(file);
         exit(EXIT_FAILURE);
     }
-
+    
+    // Usuwamy znak nowej linii, jeśli jest obecny
+    len = strlen(buffer);
+    if (len > 0 && buffer[len-1] == '\n') {
+        buffer[len-1] = '\0';
+    }
+    
     // Parsowanie trzeciej linii
     data->line3 = NULL;
     data->line3_count = 0;
-    token = strtok(buffer, ";\n");
-    while (token != NULL)
-    {
-        data->line3 = realloc(data->line3, (data->line3_count + 1) * sizeof(int));
-        if (data->line3 == NULL)
-        {
-            perror("Błąd alokacji pamięci dla line3");
+    token = strtok(buffer, ";");
+    while (token) {
+        int *new_line3 = realloc(data->line3, (data->line3_count + 1) * sizeof(int));
+        if (!new_line3) {
+            perror("Failed to reallocate line3");
             free(buffer);
+            free(data->line3);
             fclose(file);
             exit(EXIT_FAILURE);
         }
+        data->line3 = new_line3;
         data->line3[data->line3_count++] = atoi(token);
-        token = strtok(NULL, ";\n");
+        token = strtok(NULL, ";");
     }
-
+    
     // Wczytujemy czwartą linię: edges
-    line_length = getline(&buffer, &n, file);
-    if (line_length == -1)
-    {
-        perror("Brak linii edges");
+    if (!fgets(buffer, MAX_BUFFOR, file)) {
+        perror("Failed to read edges line");
         free(buffer);
         fclose(file);
         exit(EXIT_FAILURE);
     }
-
+    
+    // Usuwamy znak nowej linii, jeśli jest obecny
+    len = strlen(buffer);
+    if (len > 0 && buffer[len-1] == '\n') {
+        buffer[len-1] = '\0';
+    }
+    
     // Parsowanie linii edges
     data->edges = NULL;
     data->edge_count = 0;
-    token = strtok(buffer, ";\n");
-    while (token != NULL)
-    {
-        data->edges = realloc(data->edges, (data->edge_count + 1) * sizeof(int));
-        if (data->edges == NULL)
-        {
-            perror("Błąd alokacji pamięci dla edges");
+    token = strtok(buffer, ";");
+    while (token) {
+        int *new_edges = realloc(data->edges, (data->edge_count + 1) * sizeof(int));
+        if (!new_edges) {
+            perror("Failed to reallocate edges");
             free(buffer);
+            free(data->edges);
             fclose(file);
             exit(EXIT_FAILURE);
         }
+        data->edges = new_edges;
         data->edges[data->edge_count++] = atoi(token);
-        token = strtok(NULL, ";\n");
+        token = strtok(NULL, ";");
     }
-
+    
     // Wczytujemy piątą linię: row_pointers
-    line_length = getline(&buffer, &n, file);
-    if (line_length == -1)
-    {
-        perror("Brak linii row_pointers");
+    if (!fgets(buffer, MAX_BUFFOR, file)) {
+        perror("Failed to read row_pointers line");
         free(buffer);
         fclose(file);
         exit(EXIT_FAILURE);
     }
-
+    
+    // Usuwamy znak nowej linii, jeśli jest obecny
+    len = strlen(buffer);
+    if (len > 0 && buffer[len-1] == '\n') {
+        buffer[len-1] = '\0';
+    }
+    
     // Parsowanie linii row_pointers
     data->row_pointers = NULL;
     data->row_count = 0;
-    token = strtok(buffer, ";\n");
-    while (token != NULL)
-    {
-        data->row_pointers = realloc(data->row_pointers, (data->row_count + 1) * sizeof(int));
-        if (data->row_pointers == NULL)
-        {
-            perror("Błąd alokacji pamięci dla row_pointers");
+    token = strtok(buffer, ";");
+    while (token) {
+        int *new_row_pointers = realloc(data->row_pointers, (data->row_count + 1) * sizeof(int));
+        if (!new_row_pointers) {
+            perror("Failed to reallocate row_pointers");
             free(buffer);
+            free(data->row_pointers);
             fclose(file);
             exit(EXIT_FAILURE);
         }
+        data->row_pointers = new_row_pointers;
         data->row_pointers[data->row_count++] = atoi(token);
-        token = strtok(NULL, ";\n");
+        token = strtok(NULL, ";");
     }
-
+    
     free(buffer); // Zwalniamy bufor
     fclose(file);
-
-    // Tworzenie grafu
-    // graph->vertices = data->line2_count;
-    // graph->nodes = malloc(graph->vertices * sizeof(Node));
-    // if (graph->nodes == NULL)
-    // {
-    //     perror("Błąd alokacji pamięci dla węzłów grafu");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // // Inicjalizacja węzłów
-    // for (int i = 0; i < graph->vertices; i++)
-    // {
-    //     graph->nodes[i].vertex = i;
-    //     graph->nodes[i].neighbors = NULL;
-    //     graph->nodes[i].neighbor_count = 0;
-    //     graph->nodes[i].neighbor_capacity = 0;
-    //     graph->nodes[i].part_id = -1; // Ustawienie domyślnej wartości part_id
-    // }
-
+    
+    printf("%d\n", data->line2_count);
     inicialize_graph(graph, data->line2_count);
     // Dodawanie sąsiadów
     for (int i = 0; i < data->row_count; i++)
     {
         int start = data->row_pointers[i];
         int end = (i + 1 < data->row_count) ? data->row_pointers[i + 1] : data->edge_count;
-
+        
         for (int j = start; j < end; j++)
         {
             int current_vertex = i;
             int neighbor_vertex = data->edges[j];
-
+            
             if (neighbor_vertex < 0 || neighbor_vertex >= graph->vertices)
             {
                 fprintf(stderr, "Nieprawidłowy indeks sąsiada: %d\n", neighbor_vertex);
                 continue;
             }
-
+            
             if (current_vertex != neighbor_vertex)
             {
                 add_neighbor(&graph->nodes[current_vertex], neighbor_vertex);
