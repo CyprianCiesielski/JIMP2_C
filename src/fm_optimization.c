@@ -41,8 +41,8 @@ void *thread_find_best_move(void *arg)
                 if (p != context->graph->nodes[i].part_id)
                 {
                     int gain = calculate_gain(context, i, p);
-                    // Sprawdź czy ruch ma dodatni zysk I zachowuje integralność partycji
-                    if (gain > 0 && gain > data->best_gain && is_move_valid_with_integrity(context, i, p))
+                    // Sprawdź czy ruch ma dodatni zysk
+                    if (gain > 0 && gain > data->best_gain && is_valid_move(context, i, p))
                     {
                         data->best_gain = gain;
                         data->best_vertex = i;
@@ -141,8 +141,6 @@ int find_best_move(FM_Context *context, bool *is_boundary)
     if (best_vertex != -1)
     {
         context->target_parts[best_vertex] = best_target_part;
-        printf("(Found move: vertex %d, from part %d to part %d, gain %d) ",
-               best_vertex, context->graph->nodes[best_vertex].part_id, best_target_part, best_gain);
     }
 
     return best_vertex;
@@ -231,8 +229,8 @@ int is_partition_connected(Graph *graph, int part_id)
  */
 int will_remain_connected_if_removed(Graph *graph, int vertex)
 {
-    if (!graph || vertex < 0 || vertex >= graph->vertices)
-        return 0;
+    // Dodaj więcej informacji diagnostycznych
+    printf("Checking if removing vertex %d will preserve connectivity...\n", vertex);
 
     int current_part = graph->nodes[vertex].part_id;
 
@@ -244,11 +242,17 @@ int will_remain_connected_if_removed(Graph *graph, int vertex)
             vertices_in_part++;
     }
 
-    // Jeśli nie ma innych wierzchołków lub tylko 1, to partycja pozostanie spójna
-    if (vertices_in_part <= 1)
-        return 1;
+    printf("Part %d has %d vertices (excluding vertex %d)\n",
+           current_part, vertices_in_part, vertex);
 
-    // Tymczasowo oznacz wierzchołek jako należący do innej partycji
+    // Jeśli nie ma innych wierzchołków lub tylko jeden, to partycja pozostanie spójna
+    if (vertices_in_part <= 1)
+    {
+        printf("Part has <= 1 vertex, so it remains connected\n");
+        return 1;
+    }
+
+    // Pozostała część funkcji...
     int original_part = graph->nodes[vertex].part_id;
     graph->nodes[vertex].part_id = -1;
 
@@ -869,4 +873,85 @@ void print_cut_statistics(FM_Context *context)
     printf("Current cut: %d\n", context->current_cut);
     printf("Best cut: %d\n", context->current_cut); // Teraz current_cut jest najlepszym
     printf("Moves made: %d\n", context->moves_made);
+}
+
+void check_partition_connectivity_fm(Graph *graph, int parts)
+{
+    printf("\n--- Checking partition connectivity ---\n");
+    int all_connected = 1;
+
+    for (int p = 0; p < parts; p++)
+    {
+        // Policz wierzchołki w partycji
+        int count = 0;
+        for (int i = 0; i < graph->vertices; i++)
+            if (graph->nodes[i].part_id == p)
+                count++;
+
+        if (count == 0)
+        {
+            printf("Partition %d is empty - skipping\n", p);
+            continue;
+        }
+
+        // Tablica odwiedzonych wierzchołków
+        bool *visited = calloc(graph->vertices, sizeof(bool));
+        int *queue = malloc(graph->vertices * sizeof(int));
+
+        if (!visited || !queue)
+        {
+            printf("Failed to allocate memory for connectivity check\n");
+            if (visited)
+                free(visited);
+            if (queue)
+                free(queue);
+            return;
+        }
+
+        // Znajdź pierwszy wierzchołek w partycji
+        int start = -1;
+        for (int i = 0; i < graph->vertices; i++)
+        {
+            if (graph->nodes[i].part_id == p)
+            {
+                start = i;
+                break;
+            }
+        }
+
+        // BFS
+        int front = 0, rear = 0;
+        queue[rear++] = start;
+        visited[start] = true;
+        int visited_count = 1;
+
+        while (front < rear)
+        {
+            int current = queue[front++];
+
+            for (int i = 0; i < graph->nodes[current].neighbor_count; i++)
+            {
+                int neighbor = graph->nodes[current].neighbors[i];
+                if (graph->nodes[neighbor].part_id == p && !visited[neighbor])
+                {
+                    visited[neighbor] = true;
+                    queue[rear++] = neighbor;
+                    visited_count++;
+                }
+            }
+        }
+
+        int is_connected = (visited_count == count);
+        printf("Partition %d: %s (visited %d/%d vertices)\n",
+               p, is_connected ? "CONNECTED" : "DISCONNECTED", visited_count, count);
+
+        if (!is_connected)
+            all_connected = 0;
+
+        free(visited);
+        free(queue);
+    }
+
+    printf("Overall partition connectivity: %s\n", all_connected ? "VALID" : "INVALID");
+    printf("--- End of connectivity check ---\n");
 }
