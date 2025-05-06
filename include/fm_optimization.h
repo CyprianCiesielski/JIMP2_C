@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <pthread.h> // Dodajemy nagłówek pthread
 
 // Forward declarations - zastępują #include "graph.h" i #include "partition.h"
 struct Graph;
@@ -62,5 +63,10 @@ int find_best_move(FM_Context *context, bool *is_boundary);
 void print_cut_statistics(FM_Context *context);
 void save_best_solution(FM_Context *context);
 void restore_best_solution(FM_Context *context);
+
+// Dodaj prototypy nowych funkcji
+int will_remain_connected_if_removed(Graph *graph, int vertex);
+int is_move_valid_with_integrity(FM_Context *context, int vertex, int target_part);
+int apply_move_safely(FM_Context *context, int vertex, int target_part);
 
 #endif // FM_OPTIMIZATION_H
