@@ -2,7 +2,7 @@
 #include "graph.h"
 #include "partition.h"
 #include <pthread.h>
-#include <unistd.h> // Dodano dla sysconf
+#include <unistd.h>
 
 // Struktura danych dla wątku szukającego najlepszego ruchu
 typedef struct

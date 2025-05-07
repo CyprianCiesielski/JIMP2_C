@@ -60,6 +60,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
         exit(EXIT_FAILURE);
     }
 
+    
     int *seed_points = generate_seed_points(graph, parts);
     int *visited = malloc(graph->vertices * sizeof(int));
 

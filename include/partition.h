@@ -14,6 +14,7 @@ typedef struct Part
     int capacity;       // Pojemność tablicy wierzchołków
 } Part;
 
+
 typedef struct Partition_data
 {
     int parts_count;

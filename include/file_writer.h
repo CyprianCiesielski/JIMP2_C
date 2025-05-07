@@ -13,4 +13,5 @@ void encode_vbyte(FILE *file, int value);
 void get_partition_neighbors(const Graph *graph, const Partition_data *partition_data, int part_id, int vertex, int *neighbors, int *count);
 int is_in_partition(const Partition_data *partition_data, int part_id, int vertex);
 
+
 #endif

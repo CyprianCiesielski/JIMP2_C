@@ -8,6 +8,7 @@ void print_part_neighbors(int **neighbors, int size)
         return;
     }
 
+    
     for (int i = 0; i < size; i++)
     {
         if (!neighbors[i])

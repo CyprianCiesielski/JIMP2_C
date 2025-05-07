@@ -76,6 +76,7 @@ void print_usage(char *program_name)
     printf("  -h, --help         Show this help message\n");
 }
 
+
 int main(int argc, char *argv[])
 {
     char path[256];

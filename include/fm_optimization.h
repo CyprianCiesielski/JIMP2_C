@@ -66,4 +66,5 @@ int apply_move_safely(FM_Context *context, int vertex, int target_part);
 
 void check_partition_connectivity(Graph *graph, int parts);
 
+
 #endif

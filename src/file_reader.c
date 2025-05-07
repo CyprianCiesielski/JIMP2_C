@@ -328,7 +328,8 @@ void load_graph(const char *filename, Graph *graph, ParsedData *data)
 
     free(buffer);
     fclose(file);
-
+ 
+    
     printf("%d\n", data->line2_count);
     inicialize_graph(graph, data->line2_count);
     for (int i = 0; i < data->row_count; i++)

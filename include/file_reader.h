@@ -20,6 +20,7 @@ typedef struct
     int row_count;
 } ParsedData;
 
+
 int decode_vbyte(FILE *file);
 void read_binary(const char *filename);
 void load_graph(const char *filename, Graph *graph, ParsedData *data);
