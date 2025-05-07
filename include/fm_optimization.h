@@ -64,7 +64,7 @@ int will_remain_connected_if_removed(Graph *graph, int vertex);
 int is_move_valid_with_integrity(FM_Context *context, int vertex, int target_part);
 int apply_move_safely(FM_Context *context, int vertex, int target_part);
 
-void check_partition_connectivity(Graph *graph, int parts);
+void check_partition_connectivity_fm(Graph *graph, int parts);
 
 
 #endif

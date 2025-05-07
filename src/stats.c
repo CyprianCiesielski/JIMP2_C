@@ -1,29 +1,35 @@
 #include "stats.h"
 
-void print_statistics(const Graph *graph, const Partition_data *partition_data, int parts, float accuracy, int max_edges_cut, int precompute, double execution_time)
+// wyswietla statystyki dotyczace grafu, podzialu i parametrow algorytmu
+void print_statistics(const Graph *graph, const Partition_data *partition_data, int parts, float accuracy, int precompute, double execution_time)
 {
-    printf("\n=== Program Statistics ===\n");
+    printf("\n=== Statystyki programu ===\n");
 
-    printf("\nGraph Statistics:\n");
-    printf("- Total vertices: %d\n", graph->vertices);
+    // podstawowe info o grafie
+    printf("\nStatystyki grafu:\n"); 
+    printf("- Liczba wierzcholkow: %d\n", graph->vertices);
 
+    // policz wszystkie krawedzie
     int total_edges = 0;
     for (int i = 0; i < graph->vertices; i++)
     {
         total_edges += graph->nodes[i].neighbor_count;
     }
-    printf("- Total edges: %d\n", total_edges / 2);
+    printf("- Liczba krawedzi: %d\n", total_edges / 2);
 
-    printf("\nPartition Statistics:\n");
-    printf("- Number of parts: %d\n", parts);
-    printf("- Target accuracy: %.2f%%\n", accuracy * 100);
+    // info o podziale grafu
+    printf("\nStatystyki podzialu:\n");
+    printf("- Liczba czesci: %d\n", parts);
+    printf("- Dokladnosc podzialu: %.2f%%\n", accuracy * 100);
 
-    printf("\nPartition Sizes:\n");
+    // wielkosc kazdej czesci
+    printf("\nRozmiary czesci:\n");
     for (int i = 0; i < parts; i++)
     {
-        printf("- Part %d: %d vertices\n", i, partition_data->parts[i].part_vertex_count);
+        printf("- Czesc %d: %d wierzcholkow\n", i, partition_data->parts[i].part_vertex_count);
     }
 
+    // policz ile krawedzi jest przecietych
     int cut_edges = 0;
     for (int i = 0; i < graph->vertices; i++)
     {
@@ -40,17 +46,14 @@ void print_statistics(const Graph *graph, const Partition_data *partition_data, 
     }
     cut_edges /= 2;
 
-    printf("\nCut Statistics:\n");
-    printf("- Cut edges: %d\n", cut_edges);
-    printf("- Percentage of cut edges: %.2f%%\n", (float)cut_edges / (total_edges / 2) * 100);
+    // statystyki dotyczace przecietych krawedzi
+    printf("\nStatystyki przeciec:\n");
+    printf("- Przeciete krawedzie: %d\n", cut_edges);
+    printf("- Procent przecietych krawedzi: %.2f%%\n", (float)cut_edges / (total_edges / 2) * 100);
 
-    printf("\nAlgorithm Parameters:\n");
-    if (max_edges_cut >= 0)
-    {
-        printf("- Maximum edges that can be cut: %d\n", max_edges_cut);
-    }
-    printf("- Precompute metrics: %s\n", precompute ? "Yes" : "No");
+    printf("- Obliczanie metryk: %s\n", precompute ? "Tak" : "Nie");
 
-    printf("\nPerformance:\n");
-    printf("- Execution time: %.3f seconds\n", execution_time);
+    // czas wykonania
+    printf("\nWydajnosc:\n");
+    printf("- Czas wykonania: %.3f sekund\n", execution_time);
 }
