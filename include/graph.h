@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-// Forward declaration - zastępuje #include "fm_optimization.h"
 struct Partition_data;
 typedef struct Partition_data Partition_data;
 
@@ -15,7 +14,7 @@ typedef struct Node
     int *neighbors;
     int neighbor_count;
     int part_id;
-    int neighbor_capacity; // pojemność tablicy sąsiadów
+    int neighbor_capacity;
 } Node;
 
 typedef struct Graph
@@ -28,7 +27,6 @@ typedef struct Graph
     Node *nodes;
 } Graph;
 
-// Prototypy funkcji
 void print_part_neighbors(int **neighbors, int size);
 void inicialize_graph(Graph *graph, int vertices);
 void count_edges(Graph *graph);

@@ -37,13 +37,11 @@ void print_data(const Graph *graph, const Partition_data *partition_data, int pa
             int current_vertex = partition_data->parts[i].part_vertexes[j];
             printf("Wierzchołek %d: ", current_vertex);
 
-            // Znajdź sąsiadów w tej samej części
             int neighbor_count = 0;
             for (int k = 0; k < graph->nodes[current_vertex].neighbor_count; k++)
             {
                 int neighbor = graph->nodes[current_vertex].neighbors[k];
 
-                // Sprawdź czy sąsiad jest w tej samej części
                 for (int l = 0; l < partition_data->parts[i].part_vertex_count; l++)
                 {
                     if (partition_data->parts[i].part_vertexes[l] == neighbor)
@@ -80,9 +78,8 @@ void print_usage(char *program_name)
 
 int main(int argc, char *argv[])
 {
-    // Default values
     char path[256];
-    char *percent; // Moved declaration outside switch
+    char *percent;
     int parts = 2;
     float accuracy = 0.1;
     char *input_file = "graf.csrrg";
@@ -92,7 +89,6 @@ int main(int argc, char *argv[])
     int force = 0;
     int output_format = 3;
 
-    // Handle help flag first if present
     for (int i = 1; i < argc; i++)
     {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
@@ -102,7 +98,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Handle positional arguments first
     int pos_args = 0;
     int i = 1;
     while (i < argc && argv[i][0] != '-')
@@ -118,7 +113,7 @@ int main(int argc, char *argv[])
             }
             break;
         case 1:
-            percent = strchr(argv[i], '%'); // Removed declaration
+            percent = strchr(argv[i], '%');
             if (percent)
                 *percent = '\0';
             accuracy = atof(argv[i]) / 100.0;
@@ -136,7 +131,6 @@ int main(int argc, char *argv[])
         i++;
     }
 
-    // Handle optional flags
     while (i < argc)
     {
         if (strcmp(argv[i], "--precompute-metrics") == 0 || strcmp(argv[i], "-p") == 0)
@@ -181,10 +175,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Create input path
     snprintf(path, sizeof(path), "data/%s", input_file);
 
-    // Load graph first to get vertex count
     clock_t start = clock();
     Graph graph;
     ParsedData data = {0};
@@ -192,17 +184,14 @@ int main(int argc, char *argv[])
 
     printf("Input file: %s\n", path);
 
-    // Poprawna kolejność operacji
     load_graph(path, &graph, &data);
     count_edges(&graph);
     assign_min_max_count(&graph, parts, accuracy);
     printf("Loaded graph with %d vertices and %d edges\n", graph.vertices, graph.edges);
 
-    // Initialize partition data with proper vertex count
     printf("Initializing partition data for %d parts\n", parts);
     initialize_partition_data(&partition_data, parts);
 
-    // Run region growing
     int success = region_growing(&graph, parts, &partition_data, accuracy);
     if (!success && !force)
     {
@@ -212,55 +201,43 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Zmień wywołanie funkcji
     printf("\nOptimizing with Fiduccia-Mattheyses algorithm...\n");
-    cut_edges_optimization(&graph, &partition_data, max_edges_cut > 0 ? max_edges_cut : 100);
+    cut_edges_optimization(&graph, &partition_data, max_edges_cut > 0 ? max_edges_cut : 1000);
 
-    // Zmień nazwę funkcji
     check_partition_connectivity_fm(&graph, parts);
 
-    // Use output_file for writing text and binary formats
     char output_path[256];
     char binary_path[256];
 
-    // Create paths for text and binary outputs
     snprintf(output_path, sizeof(output_path), "data/%s.csrrg", output_file);
     snprintf(binary_path, sizeof(binary_path), "data/%s.bin", output_file);
 
     if (output_format == 3)
     {
-        // Write both formats
         write_text(output_path, &data, &partition_data, &graph, parts);
         write_binary(binary_path, &data, &partition_data, &graph, parts);
     }
     else if (output_format == 0)
     {
-        // Write only text format
         write_text(output_path, &data, &partition_data, &graph, parts);
     }
     else if (output_format == 1)
     {
-        // Write only binary format
         write_binary(binary_path, &data, &partition_data, &graph, parts);
     }
 
-    // Calculate execution time
     clock_t end = clock();
     double execution_time = (double)(end - start) / CLOCKS_PER_SEC;
 
-    // Print statistics if precompute enabled
     if (precompute)
     {
         print_statistics(&graph, &partition_data, parts, accuracy, max_edges_cut, precompute, execution_time);
     }
 
-    // Example usage - tylko raz, nie potrzebujemy duplikatów
     print_part_neighbors(get_part_neighbors(&graph, &partition_data, 0, NULL), 0);
 
-    // Free all allocated memory using proper cleanup functions
     free_graph(&graph);
     free_partition_data(&partition_data, parts);
-    // free_data(&data); - zakomentowane jak w oryginalnym kodzie
 
     return 0;
 }

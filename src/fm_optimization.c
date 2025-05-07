@@ -16,10 +16,6 @@ typedef struct
     int best_target_part;
 } ThreadFindMoveData;
 
-/**
- * Funkcja wykonywana przez wątek do znajdowania najlepszego ruchu w określonym zakresie wierzchołków
- * @param arg Wskaźnik do struktury ThreadFindMoveData
- */
 void *thread_find_best_move(void *arg)
 {
     ThreadFindMoveData *data = (ThreadFindMoveData *)arg;
@@ -146,12 +142,6 @@ int find_best_move(FM_Context *context, bool *is_boundary)
     return best_vertex;
 }
 
-/**
- * Sprawdza, czy dana partycja jest spójna (wszystkie wierzchołki połączone)
- * @param graph Wskaźnik do grafu
- * @param part_id ID partycji do sprawdzenia
- * @return 1 jeśli partycja jest spójna, 0 w przeciwnym przypadku
- */
 int is_partition_connected(Graph *graph, int part_id)
 {
     if (!graph || part_id < 0 || part_id >= graph->parts)
@@ -216,17 +206,9 @@ int is_partition_connected(Graph *graph, int part_id)
     free(queue);
     free(visited);
 
-    // Jeśli liczba odwiedzonych wierzchołków równa się liczbie wierzchołków w partycji,
-    // partycja jest spójna
     return (nodes_visited == vertices_in_part);
 }
 
-/**
- * Sprawdza, czy usunięcie wierzchołka z partycji nie naruszy jej spójności
- * @param graph Wskaźnik do grafu
- * @param vertex Indeks wierzchołka do usunięcia
- * @return 1 jeśli partycja pozostanie spójna, 0 w przeciwnym przypadku
- */
 int will_remain_connected_if_removed(Graph *graph, int vertex)
 {
     // Dodaj więcej informacji diagnostycznych
@@ -317,11 +299,6 @@ int will_remain_connected_if_removed(Graph *graph, int vertex)
     return result;
 }
 
-/**
- * Sprawdza integralność wszystkich partycji
- * @param graph Wskaźnik do grafu
- * @return 1 jeśli wszystkie partycje są spójne, 0 w przeciwnym przypadku
- */
 int verify_partition_integrity(Graph *graph)
 {
     if (!graph)
@@ -345,11 +322,6 @@ int verify_partition_integrity(Graph *graph)
     return all_connected;
 }
 
-/**
- * Oblicza rzeczywistą liczbę przeciętych krawędzi
- * @param graph Wskaźnik do grafu
- * @return Liczba przeciętych krawędzi
- */
 int count_cut_edges(Graph *graph)
 {
     if (!graph)
@@ -375,10 +347,6 @@ int count_cut_edges(Graph *graph)
     return cut_edges;
 }
 
-/**
- * Wypisuje statystyki po optymalizacji
- * @param graph Wskaźnik do grafu
- */
 void print_final_statistics(Graph *graph)
 {
     if (!graph)
@@ -454,7 +422,6 @@ void analyze_moves(FM_Context *context, bool *is_boundary)
 
     printf("\n--- Move Analysis ---\n");
 
-    // Dla każdego wierzchołka
     for (int i = 0; i < context->graph->vertices; i++)
     {
         if (is_boundary[i])
