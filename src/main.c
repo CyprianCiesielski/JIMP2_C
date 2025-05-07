@@ -78,6 +78,7 @@ void print_usage(char *program_name)
     printf("  plik_wejsciowy   nazwa pliku wejsciowego (domyslnie: graf.csrrg)\n");
     printf("\nOpcje:\n");
     printf("  --precompute-metrics -p oblicz metryki przed podzialem\n");
+    printf("  --statistics -s       wyswietl szczegolowe statystyki\n");
     printf("  --output -o PLIK      nazwa pliku wyjsciowego (domyslnie: anwser.csrrg)\n");
     printf("  --out-format text|binary / -k format wyjsciowy (domyslnie: oba)\n");
     printf("  --force -f            wymus podzial nawet jesli nie spelnia dokladnosci\n");
@@ -99,6 +100,7 @@ int main(int argc, char *argv[])
     int precompute = 0;               // czy liczyc statystyki
     int force = 0;                    // czy wymusic podzial
     int output_format = 3;            // format wyjsciowy (3=oba)
+    int show_statistics = 0;          // czy wyswietlic statystyki
 
     // sprawdz czy uzytkownik chce pomocy
     for (int i = 1; i < argc; i++)
@@ -192,6 +194,11 @@ int main(int argc, char *argv[])
             force = 1;
             i++;
         }
+        else if (strcmp(argv[i], "--statistics") == 0 || strcmp(argv[i], "-s") == 0)
+        {
+            show_statistics = 1;
+            i++;
+        }
         else
         {
             perror("nieznana opcja");
@@ -263,9 +270,14 @@ int main(int argc, char *argv[])
     double execution_time = (double)(end - start) / CLOCKS_PER_SEC;
 
     // wyswietl statystyki jesli trzeba
-    if (precompute)
+    if (show_statistics)
     {
         print_statistics(&graph, &partition_data, parts, accuracy, precompute, execution_time);
+    }
+
+    if (precompute)
+    {
+        print_precompute_metrics(&graph, &partition_data, parts);
     }
 
     // pokaz sasiadow pierwszej czesci
