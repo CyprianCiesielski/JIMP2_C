@@ -12,17 +12,33 @@ OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
 LDFLAGS = -pthread -flto
 
-all: $(TARGET)
+all: check_dirs $(TARGET)
+
+# Sprawdź czy istnieją katalogi
+check_dirs:
+	@echo "Checking source directory..."
+	@if [ ! -d $(SRC_DIR) ]; then echo "$(SRC_DIR) directory not found!"; exit 1; fi
+	@echo "Source files found: $(SRCS)"
+	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(BIN_DIR)
 
 $(TARGET): $(OBJS)
-	mkdir -p $(BIN_DIR)
+	@echo "Linking $(TARGET)..."
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "Build successful!"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	mkdir -p $(OBJ_DIR)
+	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
-.PHONY: all clean
+debug:
+	@echo "Source directory: $(SRC_DIR)"
+	@echo "Source files: $(SRCS)"
+	@echo "Object files: $(OBJS)"
+	@echo "CFLAGS: $(CFLAGS)"
+	@echo "LDFLAGS: $(LDFLAGS)"
+
+.PHONY: all clean debug check_dirs
