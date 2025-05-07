@@ -1,10 +1,12 @@
 #include "region_growing.h"
 
+// sprawdza czy kolejka jest pusta
 int is_empty(struct Queue *queue)
 {
     return queue->front == queue->rear;
 }
 
+// dodaje element do kolejki
 void add_to_queue(struct Queue *queue, int item)
 {
     if (queue->rear < queue->max_size)
@@ -13,10 +15,11 @@ void add_to_queue(struct Queue *queue, int item)
     }
     else
     {
-        fprintf(stderr, "Kolejka jest pełna\n");
+        fprintf(stderr, "Kolejka jest pelna\n");
     }
 }
 
+// usuwa element z poczatku kolejki
 void remove_from_queue(struct Queue *queue)
 {
     if (!is_empty(queue))
@@ -29,21 +32,24 @@ void remove_from_queue(struct Queue *queue)
     }
 }
 
+// generuje losowe punkty startowe dla partycji
 int *generate_seed_points(Graph *graph, int parts)
 {
-    srand(time(NULL));
+    srand(time(NULL)); // inicjalizuje generator losowy
     int *seed_points = malloc(parts * sizeof(int));
     if (seed_points == NULL)
     {
-        perror("Błąd alokacji pamięci dla punktów startowych");
+        perror("Blad alokacji pamieci dla punktow startowych");
         exit(EXIT_FAILURE);
     }
 
+    // losuje wierzcholki jako punkty startowe
     for (int i = 0; i < parts; i++)
     {
         seed_points[i] = rand() % graph->vertices;
     }
 
+    // oznacza punkty startowe jako nalezace do odpowiednich partycji
     for (int i = 0; i < parts; i++)
     {
         graph->nodes[seed_points[i]].part_id = i;
@@ -52,47 +58,53 @@ int *generate_seed_points(Graph *graph, int parts)
     return seed_points;
 }
 
+// glowny algorytm podzialu grafu metoda rozrostu regionow
 int region_growing(Graph *graph, int parts, Partition_data *partition_data, float accuracy)
 {
+    // sprawdzam czy liczba partycji jest prawidlowa
     if (parts > graph->vertices)
     {
-        fprintf(stderr, "Liczba części nie może być większa od liczby wierzchołków\n");
+        perror("Liczba czesci nie moze byc wieksza od liczby wierzcholkow");
         exit(EXIT_FAILURE);
     }
 
-    
+    // inicjalizuje zmienne
     int *seed_points = generate_seed_points(graph, parts);
     int *visited = malloc(graph->vertices * sizeof(int));
 
     if (visited == NULL)
     {
-        perror("Błąd alokacji pamięci dla odwiedzonych węzłów");
+        perror("Blad alokacji pamieci dla odwiedzonych wezlow");
         free(seed_points);
         exit(EXIT_FAILURE);
     }
 
+    // zeruje tablice odwiedzonych wierzcholkow
     memset(visited, 0, graph->vertices * sizeof(int));
 
+    // tworze tablice frontow dla kazdej partycji
     int **frontier = malloc(parts * sizeof(int *));
     int *frontier_size = malloc(parts * sizeof(int));
     int *frontier_capacity = malloc(parts * sizeof(int));
 
     if (!frontier || !frontier_size || !frontier_capacity)
     {
-        perror("Błąd alokacji pamięci dla frontów partycji");
+        perror("Blad alokacji pamieci dla frontow partycji");
         free(seed_points);
         free(visited);
         exit(EXIT_FAILURE);
     }
 
+    // inicjalizuje tablice frontow
     for (int i = 0; i < parts; i++)
     {
         frontier_size[i] = 0;
-        frontier_capacity[i] = 10;
+        frontier_capacity[i] = 10; // poczatkowy rozmiar
         frontier[i] = malloc(frontier_capacity[i] * sizeof(int));
         if (!frontier[i])
         {
-            perror("Błąd alokacji pamięci dla frontu partycji");
+            perror("Blad alokacji pamieci dla frontu partycji");
+            // sprzatam juz zaalokowane fronty
             for (int j = 0; j < i; j++)
             {
                 free(frontier[j]);
@@ -106,15 +118,18 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
         }
     }
 
+    // resetuje przypisanie partycji dla wszystkich wierzcholkow
     for (int i = 0; i < graph->vertices; i++)
     {
-        graph->nodes[i].part_id = -1;
+        graph->nodes[i].part_id = -1; // -1 to brak przypisania
     }
 
+    // inicjalizuje liczniki wierzcholkow w partycjach
     int *part_counts = calloc(parts, sizeof(int));
     if (!part_counts)
     {
-        perror("Błąd alokacji pamięci dla liczników partycji");
+        perror("Blad alokacji pamieci dla licznikow partycji");
+        // sprzatam
         for (int i = 0; i < parts; i++)
         {
             free(frontier[i]);
@@ -127,6 +142,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
         exit(EXIT_FAILURE);
     }
 
+    // dodaje punkty startowe do frontow partycji
     printf("Seed points: ");
     for (int i = 0; i < parts; i++)
     {
@@ -136,19 +152,21 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
         add_partition_data(partition_data, i, seed_points[i]);
         part_counts[i]++;
 
+        // dodaje sasiadow punktu startowego do frontu partycji
         Node *node = &graph->nodes[seed_points[i]];
         for (int j = 0; j < node->neighbor_count; j++)
         {
             int neighbor = node->neighbors[j];
             if (!visited[neighbor])
             {
+                // powiekszam front jesli potrzeba
                 if (frontier_size[i] >= frontier_capacity[i])
                 {
                     frontier_capacity[i] *= 2;
                     frontier[i] = realloc(frontier[i], frontier_capacity[i] * sizeof(int));
                     if (!frontier[i])
                     {
-                        perror("Błąd realokacji frontu partycji");
+                        perror("Blad realokacji frontu partycji");
                         exit(EXIT_FAILURE);
                     }
                 }
@@ -158,6 +176,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
     }
     printf("\n");
 
+    // wyswietlam liczbe sasiadow punktow startowych
     printf("Neighbor counts: ");
     for (int i = 0; i < parts; i++)
     {
@@ -165,8 +184,10 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
     }
     printf("\n");
 
+    // obliczam srednia liczbe wierzcholkow na partycje
     float avg_vertices_per_part = (float)graph->vertices / parts;
 
+    // obliczam min i max rozmiary partycji na podstawie parametru dokladnosci
     int min_vertices_per_part = (int)((avg_vertices_per_part * (1.0 - accuracy)));
     if ((float)min_vertices_per_part < (avg_vertices_per_part * (1.0 - accuracy)))
     {
@@ -177,11 +198,13 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
     printf("Average vertices per part: %.2f (min: %d, max: %d)\n",
            avg_vertices_per_part, min_vertices_per_part, max_vertices_per_part);
 
+    // glowna petla algorytmu rozrostu regionow
     int iterations = 0;
-    int unassigned = graph->vertices - parts;
+    int unassigned = graph->vertices - parts; // wszystkie wierzcholki minus punkty startowe
 
     while (unassigned > 0 && iterations < graph->vertices * 2)
     {
+        // szukam partycji z najmniejsza liczba wierzcholkow, ktora ma jeszcze dostepny front
         int min_part = -1;
         for (int i = 0; i < parts; i++)
         {
@@ -194,6 +217,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
             }
         }
 
+        // jesli nie znaleziono odpowiedniej partycji, sprawdzam czy sa jakies fronty
         if (min_part == -1)
         {
             int any_frontier = 0;
@@ -207,12 +231,14 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
                 }
             }
 
+            // konczymy jesli nie ma zadnych frontow
             if (!any_frontier)
             {
                 printf("No available frontiers, terminating\n");
                 break;
             }
 
+            // jesli wszystkie partycje osiagnely gorny limit, zwiekszamy go
             if (part_counts[min_part] >= max_vertices_per_part)
             {
                 max_vertices_per_part++;
@@ -220,6 +246,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
             }
         }
 
+        // rozrastam wybrana partycje o jeden wierzcholek
         int current = frontier[min_part][--frontier_size[min_part]];
 
         if (!visited[current])
@@ -230,11 +257,13 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
             part_counts[min_part]++;
             unassigned--;
 
+            // dodaje sasiadow do frontu
             Node *node = &graph->nodes[current];
             for (int i = 0; i < node->neighbor_count; i++)
             {
                 int neighbor = node->neighbors[i];
 
+                // sprawdzam czy sasiad ma poprawny indeks
                 if (neighbor < 0 || neighbor >= graph->vertices)
                 {
                     printf("ERROR: Invalid neighbor index %d for node %d\n", neighbor, current);
@@ -243,6 +272,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
 
                 if (!visited[neighbor])
                 {
+                    // dodaje do frontu partycji, powiekszajac go jesli potrzeba
                     if (frontier_size[min_part] >= frontier_capacity[min_part])
                     {
                         frontier_capacity[min_part] *= 2;
@@ -250,7 +280,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
                                                      frontier_capacity[min_part] * sizeof(int));
                         if (!frontier[min_part])
                         {
-                            perror("Błąd realokacji frontu partycji");
+                            perror("Blad realokacji frontu partycji");
                             exit(EXIT_FAILURE);
                         }
                     }
@@ -261,8 +291,10 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
 
         iterations++;
 
+        // co 100 iteracji sprawdzam czy osiagnelismy dobra rownowage
         if (iterations % 100 == 0)
         {
+            // znajduje najwieksza i najmniejsza liczbe wierzcholkow
             int min_count = graph->vertices;
             int max_count = 0;
 
@@ -274,6 +306,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
                     max_count = part_counts[i];
             }
 
+            // sprawdzam czy osiagnelismy dobra rownowage
             if (min_count >= min_vertices_per_part && unassigned == 0)
             {
                 printf("Good balance achieved, terminating\n");
@@ -282,6 +315,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
         }
     }
 
+    // sprawdzam czy sa nieprzypisane wierzcholki
     int unassigned_count = 0;
     for (int i = 0; i < graph->vertices; i++)
     {
@@ -293,16 +327,19 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
 
     if (unassigned_count > 0)
     {
+        // przypisuje pozostale wierzcholki do partycji
         for (int i = 0; i < graph->vertices; i++)
         {
             if (graph->nodes[i].part_id == -1)
             {
+                // najpierw sprawdzam czy wierzcholek ma sasiadow w jakiejs partycji
                 Node *node = &graph->nodes[i];
                 int has_neighbor_in_partition = 0;
                 int neighbor_part = -1;
                 int smallest_neighbor_part = -1;
                 int smallest_neighbor_count = graph->vertices;
 
+                // szukam partycji sasiadow
                 for (int j = 0; j < node->neighbor_count; j++)
                 {
                     int neighbor = node->neighbors[j];
@@ -311,6 +348,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
                         has_neighbor_in_partition = 1;
                         neighbor_part = graph->nodes[neighbor].part_id;
 
+                        // szukam najmniejszej partycji wsrod sasiadow
                         if (part_counts[neighbor_part] < smallest_neighbor_count)
                         {
                             smallest_neighbor_count = part_counts[neighbor_part];
@@ -319,6 +357,8 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
                     }
                 }
 
+                // jesli ma sasiada w jakiejs partycji i ta partycja nie przekracza limitu,
+                // przypisuje do tej partycji
                 if (has_neighbor_in_partition && part_counts[smallest_neighbor_part] < max_vertices_per_part)
                 {
                     graph->nodes[i].part_id = smallest_neighbor_part;
@@ -327,6 +367,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
                 }
                 else
                 {
+                    // przypisuje do najmniejszej partycji
                     int min_part = 0;
                     for (int j = 1; j < parts; j++)
                     {
@@ -344,11 +385,13 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
         }
     }
 
+    // wypisuje ostrzezenie jesli osiagnieto limit iteracji
     if (iterations >= graph->vertices * 3)
     {
         printf("WARNING: Loop terminated due to iteration limit\n");
     }
 
+    // wypisuje rozmiary partycji na koniec
     printf("Final partition sizes: ");
     for (int i = 0; i < parts; i++)
     {
@@ -357,6 +400,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
     }
     printf("\n");
 
+    // sprawdzam czy spelnione sa wymagania dokladnosci
     int success = 1;
     float min_ratio = graph->vertices;
     float max_ratio = 0;
@@ -370,6 +414,7 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
             max_ratio = ratio;
     }
 
+    // wyswietlam ostrzezenie jesli wymagania nie sa spelnione
     if (min_ratio < (1.0 - accuracy) || max_ratio > (1.0 + accuracy))
     {
         success = 0;
@@ -377,164 +422,106 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
                min_ratio, max_ratio, 1.0 - accuracy, 1.0 + accuracy);
     }
 
+    // sprzatam
     free(visited);
     free(seed_points);
     free(part_counts);
     for (int i = 0; i < parts; i++)
     {
-        free(frontier[i]);
+        for (int i = 0; i < parts; i++)
+        {
+            free(frontier[i]);
+        }
+        free(frontier);
+        free(frontier_size);
+        free(frontier_capacity);
+
+        return success; // zwracam czy udalo sie spelnic wymagania dokladnosci
     }
-    free(frontier);
-    free(frontier_size);
-    free(frontier_capacity);
-
-    return success;
 }
-
+// sprawdza spojnosc partycji w grafie
 void check_partition_connectivity(Graph *graph, int parts)
 {
-    printf("\n--- Partition Connectivity Check ---\n");
-    int flag = 1;
-    for (int part = 0; part < parts; part++)
+    printf("\n--- Checking partition connectivity ---\n");
+    int all_connected = 1;
+
+    // sprawdzam kazda partycje po kolei
+    for (int p = 0; p < parts; p++)
     {
-        printf("Checking partition %d:\n", part);
-
-        int *part_vertices = malloc(graph->vertices * sizeof(int));
-        int part_size = 0;
-
-        if (!part_vertices)
-        {
-            perror("Failed to allocate memory for partition vertices");
-            return;
-        }
-
+        // licze wierzcholki w partycji
+        int count = 0;
         for (int i = 0; i < graph->vertices; i++)
-        {
-            if (graph->nodes[i].part_id == part)
-            {
-                part_vertices[part_size++] = i;
-            }
-        }
+            if (graph->nodes[i].part_id == p)
+                count++;
 
-        if (part_size == 0)
+        // pomijam puste partycje
+        if (count == 0)
         {
-            printf("  Partition %d is empty!\n", part);
-            free(part_vertices);
+            printf("Partition %d is empty - skipping\n", p);
             continue;
         }
 
-        int *visited = calloc(graph->vertices, sizeof(int));
-        if (!visited)
+        // przygotowuje struktury do BFS
+        bool *visited = calloc(graph->vertices, sizeof(bool));
+        int *queue = malloc(graph->vertices * sizeof(int));
+
+        if (!visited || !queue)
         {
-            perror("Failed to allocate memory for visited array");
-            free(part_vertices);
+            printf("Failed to allocate memory for connectivity check\n");
+            if (visited)
+                free(visited);
+            if (queue)
+                free(queue);
             return;
         }
 
-        int start_vertex = part_vertices[0];
-        struct Queue queue = {.front = 0, .rear = 0, .max_size = graph->vertices};
-        queue.items = malloc(graph->vertices * sizeof(int));
-
-        if (!queue.items)
+        // szukam pierwszego wierzcholka w partycji
+        int start = -1;
+        for (int i = 0; i < graph->vertices; i++)
         {
-            perror("Failed to allocate memory for queue");
-            free(part_vertices);
-            free(visited);
-            return;
+            if (graph->nodes[i].part_id == p)
+            {
+                start = i;
+                break;
+            }
         }
 
-        add_to_queue(&queue, start_vertex);
-        visited[start_vertex] = 1;
-        int connected_vertices = 1;
+        // wykonuje przejscie BFS
+        int front = 0, rear = 0;
+        queue[rear++] = start;
+        visited[start] = true;
+        int visited_count = 1;
 
-        while (!is_empty(&queue))
+        while (front < rear)
         {
-            int current = queue.items[queue.front];
-            remove_from_queue(&queue);
+            int current = queue[front++];
 
-            Node *node = &graph->nodes[current];
-
-            for (int i = 0; i < node->neighbor_count; i++)
+            // przegladam sasiadow
+            for (int i = 0; i < graph->nodes[current].neighbor_count; i++)
             {
-                int neighbor = node->neighbors[i];
-
-                if (neighbor >= 0 && neighbor < graph->vertices &&
-                    graph->nodes[neighbor].part_id == part &&
-                    !visited[neighbor])
+                int neighbor = graph->nodes[current].neighbors[i];
+                // dodaje do kolejki tylko sasiadow z tej samej partycji
+                if (graph->nodes[neighbor].part_id == p && !visited[neighbor])
                 {
-                    visited[neighbor] = 1;
-                    add_to_queue(&queue, neighbor);
-                    connected_vertices++;
+                    visited[neighbor] = true;
+                    queue[rear++] = neighbor;
+                    visited_count++;
                 }
             }
         }
 
-        if (connected_vertices == part_size)
-        {
-            printf("  Partition %d is connected. All %d vertices are reachable.\n", part, part_size);
-        }
-        else
-        {
-            flag = 0;
-            printf("  WARNING: Partition %d is NOT connected! Only %d out of %d vertices are reachable.\n",
-                   part, connected_vertices, part_size);
+        // sprawdzam czy wszystkie wierzcholki zostaly odwiedzone
+        int is_connected = (visited_count == count);
+        printf("Partition %d: %s (visited %d/%d vertices)\n",
+               p, is_connected ? "CONNECTED" : "DISCONNECTED", visited_count, count);
 
-            printf("  Disconnected vertices: ");
-            for (int i = 0; i < part_size; i++)
-            {
-                int vertex = part_vertices[i];
-                if (!visited[vertex])
-                {
-                    printf("%d ", vertex);
-                }
-            }
-            printf("\n");
-        }
+        if (!is_connected)
+            all_connected = 0;
 
-        printf("  Checking for isolated vertices in partition %d...\n", part);
-        int isolated_count = 0;
-
-        for (int i = 0; i < part_size; i++)
-        {
-            int vertex = part_vertices[i];
-            Node *node = &graph->nodes[vertex];
-            int has_part_neighbor = 0;
-
-            for (int j = 0; j < node->neighbor_count; j++)
-            {
-                int neighbor = node->neighbors[j];
-                if (neighbor >= 0 && neighbor < graph->vertices &&
-                    graph->nodes[neighbor].part_id == part)
-                {
-                    has_part_neighbor = 1;
-                    break;
-                }
-            }
-
-            if (!has_part_neighbor && node->neighbor_count > 0)
-            {
-                if (isolated_count == 0)
-                {
-                    printf("  Isolated vertices: ");
-                }
-                printf("%d ", vertex);
-                isolated_count++;
-            }
-        }
-
-        if (isolated_count == 0)
-        {
-            printf("  No isolated vertices found in partition %d.\n", part);
-        }
-        else
-        {
-            printf("\n  Found %d isolated vertices in partition %d.\n", isolated_count, part);
-        }
-
-        free(queue.items);
         free(visited);
-        free(part_vertices);
+        free(queue);
     }
 
-    printf("--- End of Connectivity Check --- %d\n\n", flag);
+    printf("Overall partition connectivity: %s\n", all_connected ? "VALID" : "INVALID");
+    printf("--- End of connectivity check ---\n");
 }
