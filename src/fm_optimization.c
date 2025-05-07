@@ -3,6 +3,7 @@
 #include "partition.h"
 #include <pthread.h>
 #include <unistd.h>
+#include <unistd.h>
 
 // struktura pomocnicza do przechowywania danych dla watku
 typedef struct

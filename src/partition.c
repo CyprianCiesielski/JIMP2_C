@@ -248,3 +248,4 @@ void add_partition_data(Partition_data *partition_data, int part_id, int vertex)
     // dodaje nowy wierzcholek
     partition_data->parts[part_id].part_vertexes[partition_data->parts[part_id].part_vertex_count++] = vertex;
 }
+

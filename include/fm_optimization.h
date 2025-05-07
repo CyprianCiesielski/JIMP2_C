@@ -98,4 +98,6 @@ int is_move_valid_with_integrity(FM_Context *context, int vertex, int target_par
 // wykonuje ruch z zachowaniem spojnosci partycji
 int apply_move_safely(FM_Context *context, int vertex, int target_part);
 
+//
+
 #endif // FM_OPTIMIZATION_H

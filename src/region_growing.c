@@ -428,15 +428,17 @@ int region_growing(Graph *graph, int parts, Partition_data *partition_data, floa
     free(part_counts);
     for (int i = 0; i < parts; i++)
     {
-        free(frontier[i]);
+        for (int i = 0; i < parts; i++)
+        {
+            free(frontier[i]);
+        }
+        free(frontier);
+        free(frontier_size);
+        free(frontier_capacity);
+
+        return success; // zwracam czy udalo sie spelnic wymagania dokladnosci
     }
-    free(frontier);
-    free(frontier_size);
-    free(frontier_capacity);
-
-    return success; // zwracam czy udalo sie spelnic wymagania dokladnosci
 }
-
 // sprawdza spojnosc partycji w grafie
 void check_partition_connectivity(Graph *graph, int parts)
 {

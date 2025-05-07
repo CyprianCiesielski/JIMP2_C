@@ -59,7 +59,7 @@ void inicialize_graph(Graph *graph, int vertices)
         graph->nodes[i].vertex = i;
         graph->nodes[i].neighbors = NULL;
         graph->nodes[i].neighbor_count = 0;
-        graph->nodes[i].part_id = -1; // -1 oznacza brak przypisania
+        graph->nodes[i].part_id = -1;
         graph->nodes[i].neighbor_capacity = 0;
     }
 }

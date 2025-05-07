@@ -1,5 +1,4 @@
 CC = gcc
-# Zmień flagi kompilacji - dodaj optymalizacje
 CFLAGS = -Wall -Wextra -Iinclude -O3 -march=native -flto
 CFLAGS += -pthread
 SRC_DIR = src
@@ -14,7 +13,6 @@ LDFLAGS = -pthread -flto
 
 all: check_dirs $(TARGET)
 
-# Sprawdź czy istnieją katalogi
 check_dirs:
 	@echo "Checking source directory..."
 	@if [ ! -d $(SRC_DIR) ]; then echo "$(SRC_DIR) directory not found!"; exit 1; fi
