@@ -2,9 +2,9 @@
 #include "graph.h"
 #include "partition.h"
 #include <pthread.h>
-#include <unistd.h> // Dodano dla sysconf
+#include <unistd.h>
 
-// Struktura danych dla wątku szukającego najlepszego ruchu
+// struktura pomocnicza do przechowywania danych dla watku
 typedef struct
 {
     FM_Context *context;
@@ -16,32 +16,33 @@ typedef struct
     int best_target_part;
 } ThreadFindMoveData;
 
-/**
- * Funkcja wykonywana przez wątek do znajdowania najlepszego ruchu w określonym zakresie wierzchołków
- * @param arg Wskaźnik do struktury ThreadFindMoveData
- */
+// funkcja wykonywana przez watek, szuka najlepszego ruchu w przydzielonym zakresie wierzcholkow
 void *thread_find_best_move(void *arg)
 {
+    // rzutuje argument na wlasciwy typ
     ThreadFindMoveData *data = (ThreadFindMoveData *)arg;
     FM_Context *context = data->context;
     bool *is_boundary = data->is_boundary;
 
+    // inicjalizacja wartosci poczatkowych
     data->best_vertex = -1;
     data->best_gain = 0;
 
-    // Sprawdź wszystkie wierzchołki w przydzielonym zakresie
+    // przegladam wierzcholki w przydzielonym zakresie
     for (int i = data->start_vertex; i < data->end_vertex; i++)
     {
-        // Rozważ tylko wierzchołki niezablokowane i graniczne
+        // sprawdzam tylko wierzcholki graniczne i niezablokowane
         if (is_boundary[i] && !context->locked[i])
         {
-            // Sprawdź możliwe docelowe partycje (wszystkie oprócz bieżącej)
+            // sprawdzam wszystkie mozliwe partie docelowe
             for (int p = 0; p < context->graph->parts; p++)
             {
+                // omijam partie, w ktorej wierzcholek juz jest
                 if (p != context->graph->nodes[i].part_id)
                 {
+                    // obliczam zysk z przeniesienia
                     int gain = calculate_gain(context, i, p);
-                    // Sprawdź czy ruch ma dodatni zysk
+                    // jesli zysk jest dodatni i najlepszy jak dotad i ruch jest dozwolony
                     if (gain > 0 && gain > data->best_gain && is_valid_move(context, i, p))
                     {
                         data->best_gain = gain;
@@ -56,18 +57,19 @@ void *thread_find_best_move(void *arg)
     return NULL;
 }
 
-// Zmodyfikowana funkcja find_best_move używająca wątków
+// szuka najlepszego ruchu korzystajac z watkow do przyspieszenia
 int find_best_move(FM_Context *context, bool *is_boundary)
 {
-    // Użyj optymalnej liczby wątków dla procesora
+    // okreslam optymalna liczbe watkow dla procesora
     int num_threads = sysconf(_SC_NPROCESSORS_ONLN);
     pthread_t threads[num_threads];
     ThreadFindMoveData thread_data[num_threads];
 
+    // dziele wierzcholki miedzy watki
     int vertices_per_thread = context->graph->vertices / num_threads;
     int remaining = context->graph->vertices % num_threads;
 
-    // Utwórz wątki, każdy pracujący na swojej części wierzchołków
+    // tworze watki i przydzielam im zakresy wierzcholkow
     for (int t = 0; t < num_threads; t++)
     {
         thread_data[t].context = context;
@@ -75,20 +77,21 @@ int find_best_move(FM_Context *context, bool *is_boundary)
         thread_data[t].start_vertex = t * vertices_per_thread;
         thread_data[t].end_vertex = (t + 1) * vertices_per_thread;
 
-        // Ostatni wątek dostaje pozostałe wierzchołki
+        // ostatniemu watkowi daje pozostale wierzcholki
         if (t == num_threads - 1)
             thread_data[t].end_vertex += remaining;
 
+        // tworze watek, jesli sie nie uda to przechodzę na wersje sekwencyjna
         if (pthread_create(&threads[t], NULL, thread_find_best_move, &thread_data[t]) != 0)
         {
             fprintf(stderr, "Error creating thread %d\n", t);
-            // Fallback - wykonaj sekwencyjnie
+            // anuluje juz utworzone watki
             for (int i = 0; i < t; i++)
             {
                 pthread_cancel(threads[i]);
             }
 
-            // Wykonaj starą wersję find_best_move
+            // wykonuje sekwencyjna wersje find_best_move
             int best_vertex = -1;
             int best_gain = 0;
 
@@ -116,13 +119,13 @@ int find_best_move(FM_Context *context, bool *is_boundary)
         }
     }
 
-    // Czekaj na zakończenie wszystkich wątków
+    // czekam na zakonczenie wszystkich watkow
     for (int t = 0; t < num_threads; t++)
     {
         pthread_join(threads[t], NULL);
     }
 
-    // Znajdź najlepszy wynik spośród wszystkich wątków
+    // wybieram najlepszy wynik z wszystkich watkow
     int best_vertex = -1;
     int best_gain = 0;
     int best_target_part = -1;
@@ -137,7 +140,7 @@ int find_best_move(FM_Context *context, bool *is_boundary)
         }
     }
 
-    // Ustaw docelową partycję dla wybranego wierzchołka
+    // zapisuje docelowa partie dla najlepszego wierzcholka
     if (best_vertex != -1)
     {
         context->target_parts[best_vertex] = best_target_part;
@@ -146,32 +149,28 @@ int find_best_move(FM_Context *context, bool *is_boundary)
     return best_vertex;
 }
 
-/**
- * Sprawdza, czy dana partycja jest spójna (wszystkie wierzchołki połączone)
- * @param graph Wskaźnik do grafu
- * @param part_id ID partycji do sprawdzenia
- * @return 1 jeśli partycja jest spójna, 0 w przeciwnym przypadku
- */
+// sprawdza czy partycja jest spojna (wszystkie wierzcholki sa polaczone)
 int is_partition_connected(Graph *graph, int part_id)
 {
+    // sprawdzam poprawnosc parametrow
     if (!graph || part_id < 0 || part_id >= graph->parts)
         return 0;
 
-    // Liczba wierzchołków w danej partycji
+    // licze ile wierzcholkow jest w danej partycji
     int vertices_in_part = 0;
     for (int i = 0; i < graph->vertices; i++)
         if (graph->nodes[i].part_id == part_id)
             vertices_in_part++;
 
+    // pusta partycja jest spojna z definicji
     if (vertices_in_part == 0)
-        return 1; // Pusta partycja jest spójna według definicji
+        return 1;
 
-    // Tablica odwiedzonych wierzchołków
+    // tablice do przechodzenia grafu (BFS)
     bool *visited = calloc(graph->vertices, sizeof(bool));
     if (!visited)
         return 0;
 
-    // BFS do sprawdzenia spójności
     int *queue = malloc(graph->vertices * sizeof(int));
     if (!queue)
     {
@@ -179,7 +178,7 @@ int is_partition_connected(Graph *graph, int part_id)
         return 0;
     }
 
-    // Znajdź pierwszy wierzchołek w partycji
+    // szukam pierwszego wierzcholka w partycji
     int start_vertex = -1;
     for (int i = 0; i < graph->vertices; i++)
     {
@@ -190,11 +189,13 @@ int is_partition_connected(Graph *graph, int part_id)
         }
     }
 
+    // inicjalizuje kolejke do BFS
     int front = 0, rear = 0;
     queue[rear++] = start_vertex;
     visited[start_vertex] = true;
     int nodes_visited = 1;
 
+    // przechodzę grafem metoda BFS
     while (front < rear)
     {
         int current = queue[front++];
@@ -203,7 +204,7 @@ int is_partition_connected(Graph *graph, int part_id)
         {
             int neighbor = graph->nodes[current].neighbors[i];
 
-            // Rozważ tylko sąsiadów z tej samej partycji
+            // dodaje do kolejki tylko sasiadow z tej samej partycji
             if (graph->nodes[neighbor].part_id == part_id && !visited[neighbor])
             {
                 visited[neighbor] = true;
@@ -216,25 +217,19 @@ int is_partition_connected(Graph *graph, int part_id)
     free(queue);
     free(visited);
 
-    // Jeśli liczba odwiedzonych wierzchołków równa się liczbie wierzchołków w partycji,
-    // partycja jest spójna
+    // partycja jest spojna jesli odwiedzilem wszystkie wierzcholki
     return (nodes_visited == vertices_in_part);
 }
 
-/**
- * Sprawdza, czy usunięcie wierzchołka z partycji nie naruszy jej spójności
- * @param graph Wskaźnik do grafu
- * @param vertex Indeks wierzchołka do usunięcia
- * @return 1 jeśli partycja pozostanie spójna, 0 w przeciwnym przypadku
- */
+// sprawdza czy usuniecie wierzcholka z partycji nie naruszy jej spojnosci
 int will_remain_connected_if_removed(Graph *graph, int vertex)
 {
-    // Dodaj więcej informacji diagnostycznych
+    // wypisuje info diagnostyczne
     printf("Checking if removing vertex %d will preserve connectivity...\n", vertex);
 
     int current_part = graph->nodes[vertex].part_id;
 
-    // Policz wierzchołki w partycji (bez przenoszonego wierzchołka)
+    // licze wierzcholki w partycji (bez przenoszonego wierzcholka)
     int vertices_in_part = 0;
     for (int i = 0; i < graph->vertices; i++)
     {
@@ -245,18 +240,18 @@ int will_remain_connected_if_removed(Graph *graph, int vertex)
     printf("Part %d has %d vertices (excluding vertex %d)\n",
            current_part, vertices_in_part, vertex);
 
-    // Jeśli nie ma innych wierzchołków lub tylko jeden, to partycja pozostanie spójna
+    // jesli zostaje co najwyzej 1 wierzcholek, to partycja bedzie spojna
     if (vertices_in_part <= 1)
     {
         printf("Part has <= 1 vertex, so it remains connected\n");
         return 1;
     }
 
-    // Pozostała część funkcji...
+    // zapamietuje oryginalna partie i tymczasowo "usuwam" wierzcholek
     int original_part = graph->nodes[vertex].part_id;
     graph->nodes[vertex].part_id = -1;
 
-    // Tablice dla BFS
+    // przygotowuje tablice do BFS
     bool *visited = calloc(graph->vertices, sizeof(bool));
     int *queue = malloc(graph->vertices * sizeof(int));
 
@@ -266,11 +261,11 @@ int will_remain_connected_if_removed(Graph *graph, int vertex)
             free(visited);
         if (queue)
             free(queue);
-        graph->nodes[vertex].part_id = original_part; // Przywróć oryginalną partycję
+        graph->nodes[vertex].part_id = original_part; // przywracam oryginalna partie
         return 0;
     }
 
-    // Znajdź pierwszy wierzchołek w partycji (inny niż usuwany)
+    // szukam pierwszego wierzcholka w partycji po "usunieciu"
     int start_vertex = -1;
     for (int i = 0; i < graph->vertices; i++)
     {
@@ -281,7 +276,7 @@ int will_remain_connected_if_removed(Graph *graph, int vertex)
         }
     }
 
-    // BFS
+    // BFS zeby sprawdzic spojnosc po usunieciu
     int front = 0, rear = 0;
     queue[rear++] = start_vertex;
     visited[start_vertex] = true;
@@ -291,7 +286,7 @@ int will_remain_connected_if_removed(Graph *graph, int vertex)
     {
         int current = queue[front++];
 
-        // Sprawdź sąsiadów
+        // sprawdzam sasiadow
         for (int i = 0; i < graph->nodes[current].neighbor_count; i++)
         {
             int neighbor = graph->nodes[current].neighbors[i];
@@ -305,10 +300,10 @@ int will_remain_connected_if_removed(Graph *graph, int vertex)
         }
     }
 
-    // Przywróć oryginalną partycję wierzchołka
+    // przywracam oryginalna partie wierzcholka
     graph->nodes[vertex].part_id = original_part;
 
-    // Sprawdź czy wszystkie wierzchołki w partycji zostały odwiedzone
+    // sprawdzam czy wszystkie wierzcholki zostaly odwiedzone
     int result = (nodes_visited == vertices_in_part);
 
     free(visited);
@@ -317,11 +312,7 @@ int will_remain_connected_if_removed(Graph *graph, int vertex)
     return result;
 }
 
-/**
- * Sprawdza integralność wszystkich partycji
- * @param graph Wskaźnik do grafu
- * @return 1 jeśli wszystkie partycje są spójne, 0 w przeciwnym przypadku
- */
+// weryfikuje integralnosc wszystkich partycji w grafie
 int verify_partition_integrity(Graph *graph)
 {
     if (!graph)
@@ -332,6 +323,7 @@ int verify_partition_integrity(Graph *graph)
     printf("\n--- Partition Integrity Verification ---\n");
     for (int i = 0; i < graph->parts; i++)
     {
+        // sprawdzam spojnosc kazdej partycji
         int is_connected = is_partition_connected(graph, i);
         printf("Partition %d is %s\n", i, is_connected ? "connected" : "DISCONNECTED");
 
@@ -345,11 +337,7 @@ int verify_partition_integrity(Graph *graph)
     return all_connected;
 }
 
-/**
- * Oblicza rzeczywistą liczbę przeciętych krawędzi
- * @param graph Wskaźnik do grafu
- * @return Liczba przeciętych krawędzi
- */
+// liczy rzeczywista liczbe przecietych krawedzi w grafie
 int count_cut_edges(Graph *graph)
 {
     if (!graph)
@@ -357,14 +345,14 @@ int count_cut_edges(Graph *graph)
 
     int cut_edges = 0;
 
+    // przegladam wszystkie krawedzie
     for (int i = 0; i < graph->vertices; i++)
     {
         for (int j = 0; j < graph->nodes[i].neighbor_count; j++)
         {
             int neighbor = graph->nodes[i].neighbors[j];
 
-            // Liczymy tylko krawędzie w jedną stronę (i < neighbor)
-            // aby nie liczyć dwukrotnie tych samych krawędzi
+            // licze tylko w jedna strone, zeby nie liczyc podwojnie
             if (i < neighbor && graph->nodes[i].part_id != graph->nodes[neighbor].part_id)
             {
                 cut_edges++;
@@ -375,15 +363,13 @@ int count_cut_edges(Graph *graph)
     return cut_edges;
 }
 
-/**
- * Wypisuje statystyki po optymalizacji
- * @param graph Wskaźnik do grafu
- */
+// wypisuje statystyki po zakonczeniu optymalizacji
 void print_final_statistics(Graph *graph)
 {
     if (!graph)
         return;
 
+    // obliczam faktyczna liczbe przecietych krawedzi
     int actual_cut_edges = count_cut_edges(graph);
     int partition_integrity = verify_partition_integrity(graph);
 
@@ -391,7 +377,7 @@ void print_final_statistics(Graph *graph)
     printf("Actual cut edges: %d\n", actual_cut_edges);
     printf("Partition integrity: %s\n", partition_integrity ? "VALID" : "INVALID");
 
-    // Statystyki rozkładu wierzchołków
+    // statystyki rozkladu wierzcholkow miedzy partie
     int *part_sizes = calloc(graph->parts, sizeof(int));
     if (!part_sizes)
         return;
@@ -413,9 +399,12 @@ void print_final_statistics(Graph *graph)
     printf("--- End of Statistics ---\n");
 }
 
+// wypisuje statystyki partycji
 void print_partition_stats(FM_Context *context)
 {
     printf("\n--- Partition Statistics ---\n");
+
+    // zliczam wierzcholki w kazdej partycji
     int total_vertices = 0;
     for (int i = 0; i < context->graph->parts; i++)
     {
@@ -424,6 +413,7 @@ void print_partition_stats(FM_Context *context)
     }
     printf("  Total vertices: %d\n", total_vertices);
 
+    // zliczam wierzcholki graniczne
     int boundary_count = 0;
     for (int i = 0; i < context->graph->vertices; i++)
     {
@@ -445,6 +435,7 @@ void print_partition_stats(FM_Context *context)
     printf("--- End of Statistics ---\n");
 }
 
+// analizuje dostepne ruchy w aktualnym stanie grafu
 void analyze_moves(FM_Context *context, bool *is_boundary)
 {
     int total_moves = 0;
@@ -454,7 +445,7 @@ void analyze_moves(FM_Context *context, bool *is_boundary)
 
     printf("\n--- Move Analysis ---\n");
 
-    // Dla każdego wierzchołka
+    // dla kazdego wierzcholka analizuje mozliwe ruchy
     for (int i = 0; i < context->graph->vertices; i++)
     {
         if (is_boundary[i])
@@ -486,6 +477,7 @@ void analyze_moves(FM_Context *context, bool *is_boundary)
         }
     }
 
+    // podsumowanie analizy
     printf("  Total possible moves: %d\n", total_moves);
     printf("  Valid moves: %d\n", valid_moves);
     printf("  Balance violations: %d\n", balance_violations);
@@ -493,15 +485,17 @@ void analyze_moves(FM_Context *context, bool *is_boundary)
     printf("--- End of Analysis ---\n");
 }
 
+// glowna funkcja algorytmu optymalizacji Fiduccia-Mattheysa
 void cut_edges_optimization(Graph *graph, Partition_data *partition_data, int max_iterations)
 {
-    // Jeśli max_iterations jest ujemne, ustaw domyślną wartość
+    // ustawiam domyslna liczbe iteracji jesli podana jest niepoprawna
     if (max_iterations <= 0)
     {
-        max_iterations = 100; // Domyślna wartość
+        max_iterations = 100;
         printf("Warning: max_iterations was set to %d, using default value: %d\n", max_iterations, 100);
     }
 
+    // inicjalizuje kontekst algorytmu FM
     FM_Context *context = initialize_fm_context(graph, partition_data, max_iterations);
     if (!context)
     {
@@ -509,7 +503,7 @@ void cut_edges_optimization(Graph *graph, Partition_data *partition_data, int ma
         return;
     }
 
-    // Osobna tablica dla wierzchołków granicznych
+    // alokuje pamiec na tablice wierzcholkow granicznych
     bool *is_boundary = malloc(graph->vertices * sizeof(bool));
     if (!is_boundary)
     {
@@ -518,19 +512,20 @@ void cut_edges_optimization(Graph *graph, Partition_data *partition_data, int ma
         return;
     }
 
+    // obliczam poczatkowa liczbe przecietych krawedzi
     context->initial_cut = calculate_initial_cut(context);
     context->current_cut = context->initial_cut;
 
-    // Wypisz statystyki partycji przed optymalizacją
+    // wypisuje statystyki przed optymalizacja
     print_partition_stats(context);
 
-    // Zidentyfikuj wierzchołki graniczne
+    // znajduje wierzcholki graniczne
     identify_boundary_vertices(context, is_boundary);
 
-    // Przeanalizuj możliwe ruchy
+    // analizuje mozliwe ruchy
     analyze_moves(context, is_boundary);
 
-    // Jeśli początkowa liczba krawędzi przecinających jest 0, to nie ma co optymalizować
+    // jesli nie ma krawedzi do optymalizacji, koncze
     if (context->initial_cut == 0)
     {
         printf("No crossing edges to optimize. Exiting.\n");
@@ -541,20 +536,21 @@ void cut_edges_optimization(Graph *graph, Partition_data *partition_data, int ma
 
     printf("\nStarting FM optimization with %d max iterations\n", max_iterations);
 
+    // glowna petla algorytmu
     for (int iter = 0; iter < max_iterations; iter++)
     {
-        // Zidentyfikuj wierzchołki graniczne
+        // aktualizuje liste wierzcholkow granicznych
         identify_boundary_vertices(context, is_boundary);
 
-        // Resetuj blokadę wierzchołków w każdej iteracji
+        // odblokowuje wszystkie wierzcholki w kazdej iteracji
         memset(context->locked, 0, context->graph->vertices * sizeof(bool));
 
         printf("Iteration %d: ", iter);
 
-        // Znajdź najlepszy ruch
+        // szukam najlepszego ruchu
         int best_move_vertex = find_best_move(context, is_boundary);
 
-        // Jeśli nie ma dostępnych ruchów, kończymy
+        // koniec jesli nie ma dostepnych ruchow
         if (best_move_vertex == -1)
         {
             printf("No valid moves found. Stopping.\n");
@@ -563,57 +559,46 @@ void cut_edges_optimization(Graph *graph, Partition_data *partition_data, int ma
 
         int target_part = context->target_parts[best_move_vertex];
 
-        // Zastosuj ruch tylko jeśli nie naruszy spójności
+        // wykonuje ruch tylko jesli nie naruszy spojnosci
         if (!apply_move_safely(context, best_move_vertex, target_part))
         {
-            // Jeśli ruch nie mógł być wykonany z powodu spójności, oznaczamy wierzchołek jako zablokowany
+            // jesli ruch niemozliwy, blokuje wierzcholek
             context->locked[best_move_vertex] = true;
-            continue; // Przejdź do następnej iteracji
+            continue;
         }
 
         printf("Current cut: %d\n", context->current_cut);
     }
 
+    // wyswietlam podsumowanie
     print_cut_statistics(context);
 
-    // Po zakończeniu optymalizacji, dodaj weryfikację i statystyki
+    // wyswietlam dodatkowe statystyki i weryfikacje
     print_final_statistics(graph);
 
-    // Zwolnij pamięć
+    // zwalniam pamiec
     free(is_boundary);
     free_fm_context(context);
 }
 
-// Modyfikacja find_best_move aby rozważyć również wierzchołki, które nie są graniczne
-/**
- * Sprawdza, czy ruch wierzchołka jest dozwolony z zachowaniem integralności partycji
- * @param context Wskaźnik do kontekstu FM
- * @param vertex Indeks wierzchołka do przeniesienia
- * @param target_part Docelowa partycja
- * @return 1 jeśli ruch jest dozwolony, 0 w przeciwnym przypadku
- */
+// sprawdza czy ruch jest dozwolony z zachowaniem spojnosci
 int is_move_valid_with_integrity(FM_Context *context, int vertex, int target_part)
 {
     if (!context || !context->graph || vertex < 0 || vertex >= context->graph->vertices)
         return 0;
 
-    // Najpierw sprawdź standardowe warunki
+    // sprawdzam standardowe ograniczenia
     if (!is_valid_move(context, vertex, target_part))
         return 0;
 
-    // Następnie sprawdź, czy usunięcie wierzchołka nie naruszy spójności partycji źródłowej
+    // sprawdzam czy usuniecie wierzcholka nie popsuje spojnosci
     return will_remain_connected_if_removed(context->graph, vertex);
 }
 
-/**
- * Zastosuj ruch z zachowaniem spójności partycji
- * @param context Wskaźnik do kontekstu FM
- * @param vertex Indeks wierzchołka do przeniesienia
- * @param target_part Docelowa partycja
- * @return 1 jeśli ruch został wykonany, 0 w przeciwnym przypadku
- */
+// wykonuje ruch z zachowaniem spojnosci partycji
 int apply_move_safely(FM_Context *context, int vertex, int target_part)
 {
+    // sprawdzam czy ruch jest dozwolony
     if (!is_move_valid_with_integrity(context, vertex, target_part))
     {
         printf("WARNING: Move of vertex %d to part %d would break connectivity - skipping\n",
@@ -621,10 +606,11 @@ int apply_move_safely(FM_Context *context, int vertex, int target_part)
         return 0;
     }
 
+    // zapamietuje obecna partie i obliczam zysk
     int current_part = context->graph->nodes[vertex].part_id;
     int gain = calculate_gain(context, vertex, target_part);
 
-    // Zastosuj ruch
+    // wykonuje ruch
     context->graph->nodes[vertex].part_id = target_part;
     context->part_sizes[current_part]--;
     context->part_sizes[target_part]++;
@@ -638,14 +624,17 @@ int apply_move_safely(FM_Context *context, int vertex, int target_part)
     return 1;
 }
 
+// inicjalizuje strukture kontekstu dla algorytmu FM
 FM_Context *initialize_fm_context(Graph *graph, Partition_data *partition_data, int max_iterations)
 {
+    // sprawdzam poprawnosc parametrow
     if (!graph || !partition_data)
     {
         fprintf(stderr, "NULL input parameters\n");
         return NULL;
     }
 
+    // alokuje pamiec na kontekst
     FM_Context *context = malloc(sizeof(FM_Context));
     if (!context)
     {
@@ -653,6 +642,7 @@ FM_Context *initialize_fm_context(Graph *graph, Partition_data *partition_data, 
         return NULL;
     }
 
+    // ustawiam podstawowe pola
     context->graph = graph;
     context->partition = partition_data;
     context->max_iterations = max_iterations;
@@ -662,7 +652,7 @@ FM_Context *initialize_fm_context(Graph *graph, Partition_data *partition_data, 
     context->current_cut = 0;
     context->best_cut = 0;
 
-    // Alokuj pamięć dla zablokowanych wierzchołków
+    // alokuje pamiec na pomocnicze tablice
     context->locked = malloc(graph->vertices * sizeof(bool));
     if (!context->locked)
     {
@@ -672,7 +662,7 @@ FM_Context *initialize_fm_context(Graph *graph, Partition_data *partition_data, 
     }
     memset(context->locked, 0, graph->vertices * sizeof(bool));
 
-    // Alokuj pamięć na zyski
+    // alokuje pamiec na zyski
     context->gains = malloc(graph->vertices * sizeof(int));
     if (!context->gains)
     {
@@ -682,7 +672,7 @@ FM_Context *initialize_fm_context(Graph *graph, Partition_data *partition_data, 
         return NULL;
     }
 
-    // Alokuj pamięć na docelowe partycje
+    // alokuje pamiec na docelowe partie
     context->target_parts = malloc(graph->vertices * sizeof(int));
     if (!context->target_parts)
     {
@@ -693,7 +683,7 @@ FM_Context *initialize_fm_context(Graph *graph, Partition_data *partition_data, 
         return NULL;
     }
 
-    // Alokuj pamięć na rozmiary partycji
+    // alokuje pamiec na rozmiary partycji
     context->part_sizes = malloc(graph->parts * sizeof(int));
     if (!context->part_sizes)
     {
@@ -705,16 +695,16 @@ FM_Context *initialize_fm_context(Graph *graph, Partition_data *partition_data, 
         return NULL;
     }
 
-    // Inicjalizuj rozmiary partycji
+    // inicjalizuje rozmiary partycji
     for (int i = 0; i < graph->parts; i++)
     {
         context->part_sizes[i] = partition_data->parts[i].part_vertex_count;
     }
 
-    // Nie potrzebujemy już best_partition, bo nie będziemy zapisywać historii
+    // nie potrzebuje best_partition
     context->best_partition = NULL;
 
-    // Inicjalizuj zyski i docelowe partycje
+    // inicjalizuje tablice zyskow i docelowych partycji
     for (int i = 0; i < graph->vertices; i++)
     {
         context->gains[i] = 0;
@@ -724,6 +714,7 @@ FM_Context *initialize_fm_context(Graph *graph, Partition_data *partition_data, 
     return context;
 }
 
+// zwalnia pamiec zaalokowana dla kontekstu FM
 void free_fm_context(FM_Context *context)
 {
     if (context)
@@ -732,19 +723,23 @@ void free_fm_context(FM_Context *context)
         free(context->gains);
         free(context->target_parts);
         free(context->part_sizes);
-        // Nie zwalniamy best_partition, bo nie jest alokowane
         free(context);
     }
 }
 
+// znajduje wierzcholki graniczne (te, ktore maja sasiadow w innych partycjach)
 void identify_boundary_vertices(FM_Context *context, bool *is_boundary)
 {
     for (int i = 0; i < context->graph->vertices; i++)
     {
+        // najpierw zakladam, ze wierzcholek nie jest graniczny
         is_boundary[i] = false;
+
+        // sprawdzam wszystkich sasiadow
         for (int j = 0; j < context->graph->nodes[i].neighbor_count; j++)
         {
             int neighbor = context->graph->nodes[i].neighbors[j];
+            // jesli sasiad jest w innej partycji, to wierzcholek jest graniczny
             if (context->graph->nodes[i].part_id != context->graph->nodes[neighbor].part_id)
             {
                 is_boundary[i] = true;
@@ -754,204 +749,138 @@ void identify_boundary_vertices(FM_Context *context, bool *is_boundary)
     }
 }
 
+// oblicza poczatkowa liczbe przecietych krawedzi
 int calculate_initial_cut(FM_Context *context)
 {
     int cut_edges = 0;
+
+    // przegladam wszystkie krawedzie
     for (int i = 0; i < context->graph->vertices; i++)
     {
         for (int j = 0; j < context->graph->nodes[i].neighbor_count; j++)
         {
             int neighbor = context->graph->nodes[i].neighbors[j];
+            // jesli sasiad jest w innej partycji, to krawedz jest przecieta
             if (context->graph->nodes[i].part_id != context->graph->nodes[neighbor].part_id)
             {
                 cut_edges++;
             }
         }
     }
-    return cut_edges / 2; // Każda krawędź liczona jest dwa razy
+    // dziele przez 2, bo kazda krawedz jest liczona dwukrotnie
+    return cut_edges / 2;
 }
 
+// oblicza zysk z przeniesienia wierzcholka do innej partycji
 int calculate_gain(FM_Context *context, int vertex, int target_part)
 {
+    // sprawdzam poprawnosc parametrow
     if (vertex < 0 || vertex >= context->graph->vertices ||
         target_part < 0 || target_part >= context->graph->parts)
     {
-        return 0; // Zabezpieczenie przed błędami segmentacji
+        return 0;
     }
 
     int current_part = context->graph->nodes[vertex].part_id;
     int gain = 0;
 
-    // Przejrzyj wszystkich sąsiadów wierzchołka
+    // przegladam sasiadow wierzcholka
     for (int i = 0; i < context->graph->nodes[vertex].neighbor_count; i++)
     {
         int neighbor = context->graph->nodes[vertex].neighbors[i];
         if (neighbor < 0 || neighbor >= context->graph->vertices)
         {
-            continue; // Zabezpieczenie przed błędami segmentacji
+            continue;
         }
 
         int neighbor_part = context->graph->nodes[neighbor].part_id;
 
+        // sasiad w docelowej partycji - zysk bo krawedz nie bedzie juz przecieta
         if (neighbor_part == target_part)
         {
-            // Sąsiad jest w docelowej partycji - to zmniejszy liczbę krawędzi przecinających
             gain++;
         }
+        // sasiad w aktualnej partycji - strata bo krawedz stanie sie przecieta
         else if (neighbor_part == current_part)
         {
-            // Sąsiad jest w bieżącej partycji - to zwiększy liczbę krawędzi przecinających
             gain--;
         }
-        // Sąsiedzi w innych partycjach nie wpływają na zmianę liczby krawędzi przecinających
+        // sasiady w innych partycjach nie wplywaja na zmiane
     }
 
     return gain;
 }
 
+// sprawdza czy dany ruch jest dozwolony
 int is_valid_move(FM_Context *context, int vertex, int target_part)
 {
+    // sprawdzam poprawnosc parametrow
     if (vertex < 0 || vertex >= context->graph->vertices ||
         target_part < 0 || target_part >= context->graph->parts)
     {
-        return 0; // Nieprawidłowy wierzchołek lub partycja
+        return 0;
     }
 
     int current_part = context->graph->nodes[vertex].part_id;
 
+    // nie przenosze zabloklowanych wierzcholkow
     if (context->locked[vertex])
     {
-        return 0; // Wierzchołek jest już zablokowany (przesunięty w tej iteracji)
+        return 0;
     }
 
+    // nie przenosze do tej samej partycji
     if (current_part == target_part)
     {
-        return 0; // Wierzchołek jest już w docelowej partycji
+        return 0;
     }
 
-    // Sprawdź ograniczenia balansu
+    // sprawdzam ograniczenia rozmiaru partycji
     int new_size_source = context->part_sizes[current_part] - 1;
     int new_size_target = context->part_sizes[target_part] + 1;
     int min_size = context->graph->min_count;
     int max_size = context->graph->max_count;
 
+    // jesli narusza ograniczenia, to ruch jest niedozwolony
     if (new_size_source < min_size || new_size_target > max_size)
     {
-        return 0; // Naruszyłoby to ograniczenia balansu
+        return 0;
     }
 
-    return 1; // Ruch jest dozwolony
+    return 1;
 }
 
+// wykonuje ruch wierzcholka do innej partycji
 void apply_move(FM_Context *context, int vertex, int target_part)
 {
+    // sprawdzam poprawnosc parametrow
     if (vertex < 0 || vertex >= context->graph->vertices ||
         target_part < 0 || target_part >= context->graph->parts)
     {
-        return; // Zabezpieczenie przed błędami segmentacji
+        return;
     }
 
     int current_part = context->graph->nodes[vertex].part_id;
     int gain = calculate_gain(context, vertex, target_part);
 
-    // Aktualizuj przypisanie partycji
+    // zmieniam przypisanie partycji
     context->graph->nodes[vertex].part_id = target_part;
 
-    // Aktualizuj rozmiary partycji
+    // aktualizuje rozmiary partycji
     context->part_sizes[current_part]--;
     context->part_sizes[target_part]++;
 
-    // Aktualizuj liczbę krawędzi przecinających i statystyki ruchów
-    context->current_cut -= gain; // Odejmij zysk (ujemny zysk oznacza zwiększoną liczbę krawędzi)
+    // aktualizuje liczbe krawedzi przecinajacych
+    context->current_cut -= gain;
     context->moves_made++;
-    context->locked[vertex] = true; // Zablokuj wierzchołek po przesunięciu
+    context->locked[vertex] = true;
 }
 
+// wypisuje statystyki optymalizacji
 void print_cut_statistics(FM_Context *context)
 {
     printf("Initial cut: %d\n", context->initial_cut);
     printf("Current cut: %d\n", context->current_cut);
-    printf("Best cut: %d\n", context->current_cut); // Teraz current_cut jest najlepszym
+    printf("Best cut: %d\n", context->current_cut);
     printf("Moves made: %d\n", context->moves_made);
-}
-
-void check_partition_connectivity_fm(Graph *graph, int parts)
-{
-    printf("\n--- Checking partition connectivity ---\n");
-    int all_connected = 1;
-
-    for (int p = 0; p < parts; p++)
-    {
-        // Policz wierzchołki w partycji
-        int count = 0;
-        for (int i = 0; i < graph->vertices; i++)
-            if (graph->nodes[i].part_id == p)
-                count++;
-
-        if (count == 0)
-        {
-            printf("Partition %d is empty - skipping\n", p);
-            continue;
-        }
-
-        // Tablica odwiedzonych wierzchołków
-        bool *visited = calloc(graph->vertices, sizeof(bool));
-        int *queue = malloc(graph->vertices * sizeof(int));
-
-        if (!visited || !queue)
-        {
-            printf("Failed to allocate memory for connectivity check\n");
-            if (visited)
-                free(visited);
-            if (queue)
-                free(queue);
-            return;
-        }
-
-        // Znajdź pierwszy wierzchołek w partycji
-        int start = -1;
-        for (int i = 0; i < graph->vertices; i++)
-        {
-            if (graph->nodes[i].part_id == p)
-            {
-                start = i;
-                break;
-            }
-        }
-
-        // BFS
-        int front = 0, rear = 0;
-        queue[rear++] = start;
-        visited[start] = true;
-        int visited_count = 1;
-
-        while (front < rear)
-        {
-            int current = queue[front++];
-
-            for (int i = 0; i < graph->nodes[current].neighbor_count; i++)
-            {
-                int neighbor = graph->nodes[current].neighbors[i];
-                if (graph->nodes[neighbor].part_id == p && !visited[neighbor])
-                {
-                    visited[neighbor] = true;
-                    queue[rear++] = neighbor;
-                    visited_count++;
-                }
-            }
-        }
-
-        int is_connected = (visited_count == count);
-        printf("Partition %d: %s (visited %d/%d vertices)\n",
-               p, is_connected ? "CONNECTED" : "DISCONNECTED", visited_count, count);
-
-        if (!is_connected)
-            all_connected = 0;
-
-        free(visited);
-        free(queue);
-    }
-
-    printf("Overall partition connectivity: %s\n", all_connected ? "VALID" : "INVALID");
-    printf("--- End of connectivity check ---\n");
 }
