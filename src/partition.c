@@ -1,12 +1,11 @@
 #include "partition.h"
 #include "graph.h"
-#include <string.h>  // Add this for memcpy
+#include <string.h>
 
 static int compare_ints(const void *a, const void *b) {
     return (*(int*)a - *(int*)b);
 }
 
-// Helper function - move from file_writer.c
 static int is_in_partition(const Partition_data *partition_data, int part_id, int vertex) {
     if (!partition_data || part_id < 0 || part_id >= partition_data->parts_count) {
         return 0;
@@ -25,40 +24,33 @@ int **get_part_neighbors(const Graph *graph, const Partition_data *partition_dat
         return NULL;
     }
 
-    // Get number of vertices in this partition
     *size = partition_data->parts[part_id].part_vertex_count;
     if (*size <= 0) {
         return NULL;
     }
 
-    // Create array for sorted vertices
     int *vertices = malloc(*size * sizeof(int));
     if (!vertices) {
         return NULL;
     }
 
-    // Copy and sort vertices
     memcpy(vertices, partition_data->parts[part_id].part_vertexes, *size * sizeof(int));
     qsort(vertices, *size, sizeof(int), compare_ints);
 
-    // Allocate array of neighbor arrays
     int **neighbors = malloc(*size * sizeof(int*));
     if (!neighbors) {
         free(vertices);
         return NULL;
     }
 
-    // For each vertex in sorted order
     for (int i = 0; i < *size; i++) {
         int vertex = vertices[i];
         int max_neighbors = graph->nodes[vertex].neighbor_count;
         
-        // Allocate temporary array for neighbors
         int *temp_neighbors = malloc(max_neighbors * sizeof(int));
         int neighbor_count = 0;
 
         if (!temp_neighbors) {
-            // Cleanup on failure
             for (int j = 0; j < i; j++) {
                 free(neighbors[j]);
             }
@@ -67,7 +59,6 @@ int **get_part_neighbors(const Graph *graph, const Partition_data *partition_dat
             return NULL;
         }
 
-        // Find actual neighbors in same partition
         for (int j = 0; j < max_neighbors; j++) {
             int neighbor = graph->nodes[vertex].neighbors[j];
             if (is_in_partition(partition_data, part_id, neighbor)) {
@@ -75,15 +66,12 @@ int **get_part_neighbors(const Graph *graph, const Partition_data *partition_dat
             }
         }
 
-        // Sort neighbors if we found any
         if (neighbor_count > 0) {
             qsort(temp_neighbors, neighbor_count, sizeof(int), compare_ints);
         }
 
-        // Allocate final array for vertex and its neighbors (+2 for vertex and terminator)
         neighbors[i] = malloc((neighbor_count + 2) * sizeof(int));
         if (!neighbors[i]) {
-            // Cleanup on failure
             for (int j = 0; j < i; j++) {
                 free(neighbors[j]);
             }
@@ -93,15 +81,12 @@ int **get_part_neighbors(const Graph *graph, const Partition_data *partition_dat
             return NULL;
         }
 
-        // Store vertex as first element
         neighbors[i][0] = vertex;
         
-        // Copy sorted neighbors
         for (int j = 0; j < neighbor_count; j++) {
             neighbors[i][j + 1] = temp_neighbors[j];
         }
         
-        // Add terminator
         neighbors[i][neighbor_count + 1] = -1;
 
         free(temp_neighbors);
@@ -136,7 +121,6 @@ void initialize_partition_data(Partition_data *partition_data, int parts)
     }
 }
 
-// Fix the function signature to match the header
 void free_partition_data(Partition_data *partition_data, int parts) {
     if (!partition_data) {
         return;
@@ -182,10 +166,8 @@ void add_partition_data(Partition_data *partition_data, int part_id, int vertex)
         return;
     }
 
-    // Check if we need to initialize the vertex array
     if (partition_data->parts[part_id].part_vertexes == NULL)
     {
-        // Initial allocation with capacity for 128 elements
         partition_data->parts[part_id].capacity = 128;
         partition_data->parts[part_id].part_vertexes = malloc(partition_data->parts[part_id].capacity * sizeof(int));
         if (!partition_data->parts[part_id].part_vertexes)
@@ -195,10 +177,8 @@ void add_partition_data(Partition_data *partition_data, int part_id, int vertex)
         }
         partition_data->parts[part_id].part_vertex_count = 0;
     }
-    // Check if we need to expand the array
     else if (partition_data->parts[part_id].part_vertex_count >= partition_data->parts[part_id].capacity)
     {
-        // Double the capacity
         partition_data->parts[part_id].capacity *= 2;
         int *new_vertexes = realloc(partition_data->parts[part_id].part_vertexes,
                                     partition_data->parts[part_id].capacity * sizeof(int));
@@ -210,6 +190,6 @@ void add_partition_data(Partition_data *partition_data, int part_id, int vertex)
         partition_data->parts[part_id].part_vertexes = new_vertexes;
     }
 
-    // Add the new vertex
     partition_data->parts[part_id].part_vertexes[partition_data->parts[part_id].part_vertex_count++] = vertex;
 }
+

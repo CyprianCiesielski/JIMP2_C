@@ -1,7 +1,6 @@
 #include "graph.h"
 #include "partition.h"
 
-
 void print_part_neighbors(int **neighbors, int size)
 {
     if (!neighbors || size <= 0)
@@ -9,6 +8,7 @@ void print_part_neighbors(int **neighbors, int size)
         return;
     }
 
+    
     for (int i = 0; i < size; i++)
     {
         if (!neighbors[i])
@@ -37,7 +37,7 @@ void inicialize_graph(Graph *graph, int vertices)
     graph->parts = 0;
     graph->min_count = 0;
     graph->max_count = 0;
-    
+
     graph->nodes = malloc(vertices * sizeof(Node));
     if (graph->nodes == NULL)
     {
@@ -49,7 +49,7 @@ void inicialize_graph(Graph *graph, int vertices)
         graph->nodes[i].vertex = i;
         graph->nodes[i].neighbors = NULL;
         graph->nodes[i].neighbor_count = 0;
-        graph->nodes[i].part_id = -1; // -1 oznacza brak przypisania
+        graph->nodes[i].part_id = -1;
         graph->nodes[i].neighbor_capacity = 0;
     }
 }
@@ -61,7 +61,7 @@ void count_edges(Graph *graph)
     {
         edge_count += graph->nodes[i].neighbor_count;
     }
-    graph->edges = edge_count / 2; // Dzielimy przez 2, ponieważ każda krawędź jest liczona dwa razy
+    graph->edges = edge_count / 2;
 }
 void assign_min_max_count(Graph *graph, int parts, float accuracy)
 {
@@ -73,11 +73,8 @@ void assign_min_max_count(Graph *graph, int parts, float accuracy)
 
     graph->parts = parts;
 
-    // Obliczanie średniej liczby wierzchołków na czę
-
     float avg_vertices_per_part = (float)graph->vertices / parts;
 
-    // Obliczanie min i max liczby wierzchołków na podstawie accuracy
     int min_vertices_per_part = (int)((avg_vertices_per_part * (1.0 - accuracy)));
     if ((float)min_vertices_per_part < (avg_vertices_per_part * (1.0 - accuracy)))
     {
