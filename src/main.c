@@ -81,6 +81,7 @@ void print_usage(char *program_name)
     printf("  --output -o PLIK      nazwa pliku wyjsciowego (domyslnie: anwser.csrrg)\n");
     printf("  --out-format text|binary / -k format wyjsciowy (domyslnie: oba)\n");
     printf("  --force -f            wymus podzial nawet jesli nie spelnia dokladnosci\n");
+    printf("  --iterations -i ilosc iteracji funkcji cut_edges_optimalization\n");
     printf("  -h, --help           pokaz ten komunikat pomocy\n");
 }
 
@@ -94,7 +95,7 @@ int main(int argc, char *argv[])
     float accuracy = 0.1;             // dokladnosc podzialu
     char *input_file = "graf.csrrg";  // plik wejsciowy
     char *output_file = "anwser";     // plik wyjsciowy
-    int max_edges_cut = -1;           // max przecietych krawedzi
+    int iteration_limit = -1;           // max przecietych krawedzi
     int precompute = 0;               // czy liczyc statystyki
     int force = 0;                    // czy wymusic podzial
     int output_format = 3;            // format wyjsciowy (3=oba)
@@ -155,6 +156,17 @@ int main(int argc, char *argv[])
                  (strcmp(argv[i], "-o") == 0 && i + 1 < argc))
         {
             output_file = argv[i + 1];
+            i += 2;
+        }
+        else if ((strcmp(argv[i], "--iterations") == 0 && i + 1 < argc) ||
+                 (strcmp(argv[i], "-i") == 0 && i + 1 < argc))
+        {
+            iteration_limit = atoi(argv[i + 1]);
+            if (iteration_limit <= 0)
+            {
+                perror("ilosc iteracji musi byc dodatnia i w zakresie int");
+                return 1;
+            }
             i += 2;
         }
         else if ((strcmp(argv[i], "--out-format") == 0 && i + 1 < argc) ||
@@ -220,7 +232,7 @@ int main(int argc, char *argv[])
 
     // optymalizacja podzialu
     printf("\nOptimizing with Fiduccia-Mattheyses algorithm...\n");
-    cut_edges_optimization(&graph, &partition_data, max_edges_cut > 0 ? max_edges_cut : 1000);
+    cut_edges_optimization(&graph, &partition_data, iteration_limit > 0 ? iteration_limit : 1000);
 
     // sprawdz spojnosc
     check_partition_connectivity(&graph, parts);
