@@ -11,7 +11,7 @@
 #include <time.h>
 #include "stats.h"
 #include "fm_optimization.h"
-
+#include <math.h>
 // wyswietla wszystkie wierzcholki grafu i ich sasiadow
 void print_graph(const Graph *graph)
 {
@@ -74,7 +74,7 @@ void print_usage(char *program_name)
     printf("Uzycie: %s [czesci] [dokladnosc] [plik_wejsciowy] [opcje]\n", program_name);
     printf("\nArgumenty pozycyjne:\n");
     printf("  czesci            liczba czesci na ktore dzielic (domyslnie: 2)\n");
-    printf("  dokladnosc       dokladnosc podzialu z %% (domyslnie: 10%%)\n"); 
+    printf("  dokladnosc       dokladnosc podzialu z %% (domyslnie: 10%%)\n");
     printf("  plik_wejsciowy   nazwa pliku wejsciowego (domyslnie: graf.csrrg)\n");
     printf("\nOpcje:\n");
     printf("  --precompute-metrics -p oblicz metryki przed podzialem\n");
@@ -92,15 +92,15 @@ int main(int argc, char *argv[])
     // domyslne wartosci parametrow
     char path[256];
     char *percent;
-    int parts = 2;                    // ilosc czesci
-    float accuracy = 0.1;             // dokladnosc podzialu
-    char *input_file = "graf.csrrg";  // plik wejsciowy
-    char *output_file = "anwser";     // plik wyjsciowy
-    int iteration_limit = -1;           // max przecietych krawedzi
-    int precompute = 0;               // czy liczyc statystyki
-    int force = 0;                    // czy wymusic podzial
-    int output_format = 3;            // format wyjsciowy (3=oba)
-    int show_statistics = 0;          // czy wyswietlic statystyki
+    int parts = 2;                   // ilosc czesci
+    float accuracy = 0.1;            // dokladnosc podzialu
+    char *input_file = "graf.csrrg"; // plik wejsciowy
+    char *output_file = "anwser";    // plik wyjsciowy
+    int iteration_limit = -1;        // max przecietych krawedzi
+    int precompute = 0;              // czy liczyc statystyki
+    int force = 0;                   // czy wymusic podzial
+    int output_format = 3;           // format wyjsciowy (3=oba)
+    int show_statistics = 0;         // czy wyswietlic statystyki
 
     // sprawdz czy uzytkownik chce pomocy
     for (int i = 1; i < argc; i++)
@@ -251,16 +251,16 @@ int main(int argc, char *argv[])
     snprintf(binary_path, sizeof(binary_path), "data/%s.bin", output_file);
 
     // zapisz wyniki w odpowiednim formacie
-    if (output_format == 3)          // zapisz oba
+    if (output_format == 3) // zapisz oba
     {
         write_text(output_path, &data, &partition_data, &graph, parts);
         write_binary(binary_path, &data, &partition_data, &graph, parts);
     }
-    else if (output_format == 0)     // tylko tekst
+    else if (output_format == 0) // tylko tekst
     {
         write_text(output_path, &data, &partition_data, &graph, parts);
     }
-    else if (output_format == 1)     // tylko binarny
+    else if (output_format == 1) // tylko binarny
     {
         write_binary(binary_path, &data, &partition_data, &graph, parts);
     }

@@ -26,7 +26,7 @@ check_dirs:
 
 $(TARGET): $(OBJS)
 	@echo "Linking $(TARGET)..."
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS) -lm
 	@echo "Build successful!"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
@@ -62,8 +62,15 @@ test_partition: check_dirs
 		$(TEST_OBJS)
 	./$(BIN_DIR)/test_partition
 
+test_fm_optimization: check_dirs
+	@echo "Building and running partition tests..."
+	$(CC) $(CFLAGS) -o $(BIN_DIR)/test_fm_optimization \
+		tests/test_fm_optimization.c \
+		$(TEST_OBJS)
+	./$(BIN_DIR)/test_fm_optimization
+
 # Main test target that runs all tests
-tests: test_file_reader test_region_growing test_graph test_partition
+tests: test_file_reader test_region_growing test_graph test_partition test_fm_optimization
 	@echo "All tests completed."
 
 clean:
