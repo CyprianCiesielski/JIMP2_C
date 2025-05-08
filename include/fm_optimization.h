@@ -9,6 +9,7 @@
 #include "graph.h"
 #include "partition.h"
 #include "region_growing.h"
+#include <unistd.h>
 
 // deklaracje zapowiadajace, zeby uniknac cyklicznych zaleznosci
 struct Graph;
@@ -38,6 +39,7 @@ typedef struct
     Graph *graph;              // wskaznik na graf
     Partition_data *partition; // wskaznik na dane partycji
     bool *locked;              // tablica wierzcholkow zablokowanych (juz przesunietych)
+    bool *unmovable;           // tablica wierzcholkow niemozliwych do przeniesienia (nowe pole)
     int *gains;                // zyski dla kazdego wierzcholka
     int *target_parts;         // docelowe partycje dla kazdego wierzcholka
     int max_iterations;        // maksymalna liczba iteracji
