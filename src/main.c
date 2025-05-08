@@ -78,9 +78,11 @@ void print_usage(char *program_name)
     printf("  plik_wejsciowy   nazwa pliku wejsciowego (domyslnie: graf.csrrg)\n");
     printf("\nOpcje:\n");
     printf("  --precompute-metrics -p oblicz metryki przed podzialem\n");
+    printf("  --statistics -s       wyswietl szczegolowe statystyki\n");
     printf("  --output -o PLIK      nazwa pliku wyjsciowego (domyslnie: anwser.csrrg)\n");
     printf("  --out-format text|binary / -k format wyjsciowy (domyslnie: oba)\n");
     printf("  --force -f            wymus podzial nawet jesli nie spelnia dokladnosci\n");
+    printf("  --iterations -i ilosc iteracji funkcji cut_edges_optimalization\n");
     printf("  -h, --help           pokaz ten komunikat pomocy\n");
 }
 
@@ -94,10 +96,11 @@ int main(int argc, char *argv[])
     float accuracy = 0.1;             // dokladnosc podzialu
     char *input_file = "graf.csrrg";  // plik wejsciowy
     char *output_file = "anwser";     // plik wyjsciowy
-    int max_edges_cut = -1;           // max przecietych krawedzi
+    int iteration_limit = -1;           // max przecietych krawedzi
     int precompute = 0;               // czy liczyc statystyki
     int force = 0;                    // czy wymusic podzial
     int output_format = 3;            // format wyjsciowy (3=oba)
+    int show_statistics = 0;          // czy wyswietlic statystyki
 
     // sprawdz czy uzytkownik chce pomocy
     for (int i = 1; i < argc; i++)
@@ -157,6 +160,17 @@ int main(int argc, char *argv[])
             output_file = argv[i + 1];
             i += 2;
         }
+        else if ((strcmp(argv[i], "--iterations") == 0 && i + 1 < argc) ||
+                 (strcmp(argv[i], "-i") == 0 && i + 1 < argc))
+        {
+            iteration_limit = atoi(argv[i + 1]);
+            if (iteration_limit <= 0)
+            {
+                perror("ilosc iteracji musi byc dodatnia i w zakresie int");
+                return 1;
+            }
+            i += 2;
+        }
         else if ((strcmp(argv[i], "--out-format") == 0 && i + 1 < argc) ||
                  (strcmp(argv[i], "-k") == 0 && i + 1 < argc))
         {
@@ -178,6 +192,11 @@ int main(int argc, char *argv[])
         else if (strcmp(argv[i], "--force") == 0 || strcmp(argv[i], "-f") == 0)
         {
             force = 1;
+            i++;
+        }
+        else if (strcmp(argv[i], "--statistics") == 0 || strcmp(argv[i], "-s") == 0)
+        {
+            show_statistics = 1;
             i++;
         }
         else
@@ -220,7 +239,7 @@ int main(int argc, char *argv[])
 
     // optymalizacja podzialu
     printf("\nOptimizing with Fiduccia-Mattheyses algorithm...\n");
-    cut_edges_optimization(&graph, &partition_data, max_edges_cut > 0 ? max_edges_cut : 1000);
+    cut_edges_optimization(&graph, &partition_data, iteration_limit > 0 ? iteration_limit : 1000);
 
     // sprawdz spojnosc
     check_partition_connectivity(&graph, parts);
@@ -251,9 +270,14 @@ int main(int argc, char *argv[])
     double execution_time = (double)(end - start) / CLOCKS_PER_SEC;
 
     // wyswietl statystyki jesli trzeba
-    if (precompute)
+    if (show_statistics)
     {
         print_statistics(&graph, &partition_data, parts, accuracy, precompute, execution_time);
+    }
+
+    if (precompute)
+    {
+        print_precompute_metrics(&graph, &partition_data, parts);
     }
 
     // pokaz sasiadow pierwszej czesci
